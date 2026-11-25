@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "node_id": "master-1",
+      "roles": ["master", "storage"],
+      "accept": [],
+      "headless": true,
+      "browser": "undetected",
+      "fingerprint": "fixed"
+    },
+    {
+      "node_id": "worker-sgcc",
+      "roles": ["worker"],
+      "accept": ["sgcc_ecp"],
+      "headless": true,
+      "browser": "undetected",
+      "fingerprint": "fixed"
+    },
+    {
+      "node_id": "worker-csg",
+      "roles": ["worker"],
+      "accept": ["csg_supply"],
+      "headless": true,
+      "browser": "undetected",
+      "fingerprint": "rotate"
+    }
+  ]
+}

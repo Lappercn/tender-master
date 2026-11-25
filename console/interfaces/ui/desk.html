@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>六张网管理台</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(oklch(0.97 0.006 250), oklch(0.18 0.02 255));
+    --card: light-dark(oklch(0.995 0.002 250), oklch(0.24 0.02 255));
+    --ink: light-dark(oklch(0.27 0.03 255), oklch(0.96 0.01 250));
+    --muted: light-dark(oklch(0.48 0.02 255), oklch(0.76 0.02 250));
+    --line: light-dark(oklch(0.9 0.01 255), oklch(0.36 0.02 255));
+    --accent: light-dark(oklch(0.48 0.1 200), oklch(0.8 0.09 200));
+    --accent-ink: light-dark(oklch(0.99 0.01 200), oklch(0.2 0.03 200));
+    --danger: light-dark(oklch(0.52 0.16 25), oklch(0.76 0.13 25));
+    --side: oklch(0.2 0.03 255);
+    --side-text: oklch(0.93 0.01 250);
+    --side-muted: oklch(0.72 0.02 250);
+    --ok: light-dark(oklch(0.45 0.1 155), oklch(0.8 0.1 155));
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+  button, select, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .skip {
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    inset-block-start: 0.75rem;
+    transform: translateY(-150%);
+    background: var(--card);
+    color: var(--ink);
+    padding: 0.4rem 0.7rem;
+    border-radius: 0.5rem;
+    z-index: 2;
+  }
+  .skip:focus { transform: none; }
+  .shell { display: grid; grid-template-columns: 15rem 1fr; min-height: 100dvh; }
+  .side {
+    background: var(--side);
+    color: var(--side-text);
+    padding: 1.25rem 0.85rem;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+  }
+  .brand { font-size: 1.15rem; margin: 0 0.6rem 1rem; }
+  .brand small { display: block; margin-top: 0.2rem; color: var(--side-muted); font-size: 0.8rem; font-weight: 400; }
+  nav { display: grid; gap: 0.2rem; }
+  nav a {
+    position: relative;
+    color: var(--side-text);
+    text-decoration: none;
+    border-radius: 0.55rem;
+    padding: 0.55rem 0.75rem;
+  }
+  nav a[aria-current="page"] { background: oklch(0.28 0.03 255); }
+  nav a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.4rem;
+    inset-block: 0.45rem;
+    border-inline-start: 3px solid var(--accent);
+  }
+  .docs {
+    display: inline-block;
+    margin: 1rem 0.75rem 0;
+    color: var(--side-muted);
+    font-size: 0.9rem;
+  }
+  main { min-width: 0; }
+  .top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    padding: 1.1rem 1.5rem 0;
+  }
+  h1 { font-size: 1.45rem; margin: 0; text-wrap: balance; }
+  .pad { padding: 0.4rem 1.5rem 2.5rem; }
+  .lead { color: var(--muted); margin: 0.35rem 0 1rem; }
+  .status { min-height: 1.4rem; color: var(--muted); }
+  .stats, .split, .nets { display: grid; gap: 0.75rem; }
+  .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 0.75rem; }
+  .split { grid-template-columns: 18rem 1fr; align-items: start; }
+  .nets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    padding: 0.9rem 1rem;
+  }
+  .wide { grid-column: 1 / -1; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 0; }
+  .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  button, .linkish {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 0.55rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  button.danger { background: var(--danger); color: white; border-color: transparent; }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  label { display: grid; gap: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+  select, input[type="search"], input[type="text"] {
+    border: 1px solid var(--line);
+    border-radius: 0.55rem;
+    padding: 0.45rem 0.6rem;
+    background: var(--card);
+    field-sizing: content;
+    min-inline-size: 8rem;
+  }
+  .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0.8rem 0; }
+  .source {
+    width: 100%;
+    text-align: start;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.65rem;
+    cursor: pointer;
+  }
+  .source[aria-current="true"] { background: light-dark(oklch(0.95 0.03 190), oklch(0.32 0.04 200)); border-color: var(--line); }
+  .source b { display: block; font-weight: 600; }
+  .list { max-block-size: 70dvh; overflow: auto; scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
+  table { width: 100%; border-collapse: collapse; }
+  caption { text-align: start; font-weight: 650; margin-bottom: 0.4rem; }
+  th, td { text-align: start; padding: 0.45rem 0.35rem; border-block-end: 1px solid var(--line); font-size: 0.92rem; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  .pill { display: inline-block; border-radius: 999px; padding: 0.05rem 0.45rem; font-size: 0.75rem; border: 1px solid var(--line); }
+  .pill.ok { color: var(--ok); }
+  progress { width: 100%; accent-color: var(--accent); block-size: 0.55rem; }
+  .log {
+    margin-top: 0.8rem;
+    background: oklch(0.18 0.02 255);
+    color: oklch(0.92 0.01 250);
+    border-radius: 0.75rem;
+    min-block-size: 14rem;
+    max-block-size: 28rem;
+    overflow: auto;
+    padding: 0.8rem 0.9rem;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    scrollbar-color: oklch(0.4 0.02 255) transparent;
+    scrollbar-width: thin;
+  }
+  dialog[open] {
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: var(--card);
+    color: var(--ink);
+    padding: 1.1rem 1.2rem;
+    max-inline-size: 28rem;
+  }
+  dialog:modal, dialog::backdrop { overscroll-behavior: contain; }
+  dialog::backdrop { overflow: hidden; background: oklch(0.2 0.02 255 / 0.45); }
+  dialog h2 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  @media (max-width: 960px) {
+    .shell { grid-template-columns: 1fr; }
+    .side { position: static; height: auto; }
+    nav { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 0.35rem; }
+    nav a { flex: none; scroll-snap-align: start; }
+    .stats, .split, .nets, .choices { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">跳到内容</a>
+<div class="shell">
+  <aside class="side">
+    <p class="brand">六张网<small>管理台</small></p>
+    <nav aria-label="管理台">
+      <a href="#overview">总览</a>
+      <a href="#collect">采集</a>
+      <a href="#api">开放接口</a>
+      <a href="#storage">数据库</a>
+      <a href="#node">节点</a>
+    </nav>
+    <a class="docs" href="/docs">Swagger 接口文档</a>
+  </aside>
+  <main id="content">
+    <div class="top">
+      <h1 id="title">总览</h1>
+      <a class="linkish" href="/docs">打开 Swagger</a>
+    </div>
+    <p class="status pad" id="status" role="status"></p>
+    <section id="view-overview">
+      <div class="pad" id="overview-body"><p class="meta">正在读取总览…</p></div>
+    </section>
+    <section id="view-collect" hidden="until-found">
+      <div class="pad">
+        <p class="lead">按源头启动或关闭。浏览器和指纹保存在这个源头上，下次启动生效。关闭时会清掉这次拉起的 Chrome。</p>
+        <div class="split">
+          <div class="card">
+            <label>筛选源头
+              <input id="source-filter" type="search" placeholder="名称或编号" enterkeyhint="search">
+            </label>
+            <div class="list" id="source-list" style="margin-top:0.6rem"></div>
+          </div>
+          <div class="card" id="source-detail"><p class="meta">选择一个源头。</p></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-api" hidden="until-found">
+      <div class="pad">
+        <p class="lead">按六张网开放。新型电网只有一个查询，国家电网和南方电网都走它。</p>
+        <div class="nets" id="net-list"></div>
+      </div>
+    </section>
+    <section id="view-storage" hidden="until-found">
+      <div class="pad">
+        <p class="lead">公告写在采集库。这里看连接、库名、总量，以及每天新插入和当天采集保存了多少。</p>
+        <div id="storage-body"><p class="meta">正在读取数据库…</p></div>
+      </div>
+    </section>
+    <section id="view-node" hidden="until-found">
+      <div class="pad">
+        <p class="lead">这台机器的系统、内存，以及已经启动的采集和浏览器。</p>
+        <div id="node-body"><p class="meta">正在读取节点…</p></div>
+      </div>
+    </section>
+  </main>
+</div>
+<dialog id="stop-dialog" aria-labelledby="stop-title" closedby="any">
+  <form method="dialog">
+    <h2 id="stop-title">关闭采集</h2>
+    <p id="stop-text"></p>
+    <div class="row">
+      <button value="cancel" autofocus>取消</button>
+      <button class="danger" value="stop">关闭并结束浏览器</button>
+    </div>
+  </form>
+</dialog>
+<script>
+const pages = {
+  overview: "总览",
+  collect: "采集",
+  api: "开放接口",
+  storage: "数据库",
+  node: "节点",
+};
+let sources = [];
+let selected = "";
+let editing = false;
+let pendingStop = "";
+let busy = false;
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+function page() {
+  const id = location.hash.replace("#", "");
+  return pages[id] ? id : "overview";
+}
+function say(text) {
+  document.getElementById("status").textContent = text || "";
+}
+function showPage() {
+  const id = page();
+  document.getElementById("title").textContent = pages[id];
+  document.title = pages[id] + " · 六张网管理台";
+  for (const link of document.querySelectorAll("nav a")) {
+    link.setAttribute("aria-current", link.getAttribute("href") === "#" + id ? "page" : "false");
+  }
+  for (const key of Object.keys(pages)) {
+    const section = document.getElementById("view-" + key);
+    if (key === id) section.hidden = false;
+    else if (section.hidden !== "until-found") section.hidden = "until-found";
+  }
+  if (document.visibilityState === "visible") loadPage(id);
+}
+document.addEventListener("beforematch", event => {
+  const id = event.target.id.replace("view-", "");
+  if (pages[id] && page() !== id) location.hash = id;
+});
+window.addEventListener("hashchange", showPage);
+
+async function getJSON(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || data.message || "请求没有完成");
+  return data;
+}
+
+async function loadPage(id) {
+  try {
+    if (id === "overview") await loadOverview();
+    if (id === "collect") await loadSources();
+    if (id === "api") await loadNets();
+    if (id === "storage") await loadStorage();
+    if (id === "node") await loadNodes();
+  } catch (error) {
+    say(error.message || "读取失败");
+  }
+}
+
+async function loadOverview() {
+  const [sourceData, storage, node] = await Promise.all([
+    getJSON("/admin/sources/"),
+    getJSON("/admin/storage/"),
+    getJSON("/admin/nodes/"),
+  ]);
+  sources = sourceData.items || [];
+  const running = sources.filter(item => item.running);
+  const today = (storage.days || [])[0] || { inserted: 0, collected: 0 };
+  const memory = (node.host || {}).memory || {};
+  const rows = sources.map(item => `<tr>
+    <td>${esc(item.name)}</td>
+    <td>${item.running ? "采集中" : "未运行"}</td>
+    <td>${item.pid || ""}</td>
+    <td><button type="button" data-start="${esc(item.id)}" ${item.running ? "disabled" : ""}>启动</button>
+        <button type="button" data-stop="${esc(item.id)}" data-name="${esc(item.name)}">关闭</button></td>
+  </tr>`).join("");
+  document.getElementById("overview-body").innerHTML = `
+    <div class="stats">
+      <article class="card"><p class="meta">正在采集</p><strong>${running.length}</strong><p class="meta">共 ${sources.length} 个源头</p></article>
+      <article class="card"><p class="meta">数据库</p><strong>${storage.online ? "已连通" : "未连通"}</strong><p class="meta">${esc(storage.current)}</p></article>
+      <article class="card"><p class="meta">公告总量 / 今日新插入</p><strong>${storage.noticeCount || 0} / ${today.inserted || 0}</strong><p class="meta">今日采集保存 ${today.collected || 0}</p></article>
+      <article class="card"><p class="meta">内存 ${memory.percent || 0}%</p><progress max="100" value="${memory.percent || 0}">${memory.percent || 0}%</progress><p class="meta">${gb(memory.used)} / ${gb(memory.total)} · 浏览器 ${node.browsers || 0}</p></article>
+    </div>
+    <article class="card scroll">
+      <table>
+        <caption>采集源头</caption>
+        <thead><tr><th scope="col">源头</th><th scope="col">状态</th><th scope="col">进程</th><th scope="col">操作</th></tr></thead>
+        <tbody>${rows || "<tr><td colspan='4'>还没有源头</td></tr>"}</tbody>
+      </table>
+    </article>`;
+  bindActions(document.getElementById("overview-body"));
+}
+
+function bindActions(root) {
+  root.querySelectorAll("[data-start]").forEach(button => {
+    button.onclick = () => act(button.dataset.start, "start");
+  });
+  root.querySelectorAll("[data-stop]").forEach(button => {
+    button.onclick = () => askStop(button.dataset.stop, button.dataset.name);
+  });
+}
+
+async function loadSources() {
+  const data = await getJSON("/admin/sources/");
+  sources = data.items || [];
+  const keyword = (document.getElementById("source-filter").value || "").trim().toLowerCase();
+  const visible = sources.filter(item => !keyword || item.name.toLowerCase().includes(keyword) || item.id.includes(keyword));
+  if (!visible.some(item => item.id === selected) && visible[0]) selected = visible[0].id;
+  document.getElementById("source-list").innerHTML = visible.map(item => `
+    <button class="source" type="button" data-id="${esc(item.id)}" aria-current="${item.id === selected}">
+      <b>${esc(item.name)}</b>
+      <span class="meta">${item.running ? "采集中 · " + item.pid : "未运行"}</span>
+    </button>`).join("") || "<p class='meta'>没有匹配的源头</p>";
+  document.querySelectorAll("#source-list .source").forEach(button => {
+    button.onclick = () => { selected = button.dataset.id; editing = false; loadSources(); };
+  });
+  if (!editing) renderDetail();
+  if (selected) loadLog();
+}
+let filterTimer = 0;
+document.getElementById("source-filter").addEventListener("input", () => {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(() => {
+    if (page() === "collect") loadSources().catch(error => say(error.message));
+  }, 200);
+});
+
+function renderDetail() {
+  const item = sources.find(row => row.id === selected);
+  const box = document.getElementById("source-detail");
+  if (!item) { box.innerHTML = "<p class='meta'>选择一个源头。</p>"; return; }
+  const browser = item.browser || {};
+  const channels = (item.channels || []).map(channel => esc(channel.name)).join("、");
+  box.innerHTML = `
+    <h2 style="margin:0;font-size:1.1rem">${esc(item.name)}</h2>
+    <p class="meta">${item.running ? "采集中 · 进程 " + item.pid : "未运行"} · ${channels}</p>
+    <div class="row" style="margin:0.7rem 0">
+      <button class="primary" type="button" id="btn-start" ${item.running || busy ? "disabled" : ""}>启动</button>
+      <button class="danger" type="button" id="btn-stop">关闭</button>
+    </div>
+    <h3 style="margin:0.2rem 0;font-size:1rem">浏览器</h3>
+    <form id="browser-form">
+      <div class="choices">
+        <label>运行方式
+          <select name="headless">
+            <option value="1" ${browser.headless ? "selected" : ""}>无头</option>
+            <option value="0" ${browser.headless ? "" : "selected"}>有界面</option>
+          </select>
+        </label>
+        <label>浏览器
+          <select name="browser">
+            <option value="undetected" ${browser.browser === "selenium" ? "" : "selected"}>反检测 Chrome</option>
+            <option value="selenium" ${browser.browser === "selenium" ? "selected" : ""}>普通 Chrome</option>
+          </select>
+        </label>
+        <label>指纹
+          <select name="fingerprint">
+            <option value="fixed" ${browser.fingerprint === "rotate" ? "" : "selected"}>固定</option>
+            <option value="rotate" ${browser.fingerprint === "rotate" ? "selected" : ""}>轮换</option>
+          </select>
+        </label>
+      </div>
+      <button type="submit">保存浏览器设置</button>
+      <p class="meta">已经在跑的采集，要关闭后再启动才会换浏览器。</p>
+    </form>
+    <h3 style="margin:0.8rem 0 0;font-size:1rem">日志</h3>
+    <pre class="log" id="log" role="log">正在读取日志…</pre>`;
+  box.querySelector("#browser-form").addEventListener("focusin", () => { editing = true; });
+  box.querySelector("#btn-start").onclick = () => act(item.id, "start");
+  box.querySelector("#btn-stop").onclick = () => askStop(item.id, item.name);
+  box.querySelector("#browser-form").onsubmit = event => { event.preventDefault(); saveBrowser(new FormData(event.target)); };
+}
+
+async function act(id, action) {
+  busy = true;
+  say(action === "start" ? "正在启动…" : "正在关闭…");
+  try {
+    const data = await getJSON(`/admin/sources/${id}/${action}`, { method: "POST" });
+    if (data.ok === false) throw new Error(data.message || "操作没有完成");
+    say(data.message || "已完成");
+    editing = false;
+    await loadPage(page());
+  } catch (error) {
+    say(error.message);
+  } finally {
+    busy = false;
+  }
+}
+function askStop(id, name) {
+  pendingStop = id;
+  document.getElementById("stop-text").textContent = `将关闭「${name}」，并清掉这次拉起的 Chrome。`;
+  document.getElementById("stop-dialog").showModal();
+}
+document.getElementById("stop-dialog").addEventListener("close", () => {
+  const dialog = document.getElementById("stop-dialog");
+  const go = dialog.returnValue === "stop";
+  dialog.returnValue = "";
+  if (go && pendingStop) act(pendingStop, "stop");
+  pendingStop = "";
+});
+async function saveBrowser(form) {
+  try {
+    await getJSON(`/admin/sources/${selected}/browser`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        headless: form.get("headless") === "1",
+        browser: form.get("browser"),
+        fingerprint: form.get("fingerprint"),
+      }),
+    });
+    editing = false;
+    say("浏览器设置已保存");
+    loadSources();
+  } catch (error) {
+    say(error.message);
+  }
+}
+async function loadLog() {
+  if (page() !== "collect" || !selected) return;
+  const data = await getJSON(`/admin/sources/${selected}/logs`);
+  const box = document.getElementById("log");
+  if (!box) return;
+  box.textContent = data.text || "还没有日志。启动一次采集后，输出会留在这里。";
+  box.scrollTop = box.scrollHeight;
+}
+
+async function loadNets() {
+  const data = await getJSON("/api/nets");
+  document.getElementById("net-list").innerHTML = (data.items || []).map(item => {
+    const names = (item.sources || []).map(source => esc(source.name)).join("、");
+    const extra = item.open ? `
+      <p class="meta">接口 ${esc(item.path)}</p>
+      <p class="meta">来源：${names}</p>
+      <p><a href="/docs">在 Swagger 里调用</a></p>
+      <form id="search-form" class="row" style="margin-top:0.6rem">
+        <label>关键词
+          <input name="q" type="search" placeholder="例如换流阀" enterkeyhint="search">
+        </label>
+        <button class="primary" type="submit">查询</button>
+      </form>
+      <div id="search-result"></div>` : `<p class="meta">${esc(item.summary)}</p>`;
+    return `<article class="card ${item.open ? "wide" : ""}">
+      <span class="pill ${item.open ? "ok" : ""}">${item.open ? "已开放" : "未开放"}</span>
+      <h2 style="margin:0.4rem 0;font-size:1.05rem">${esc(item.name)}</h2>
+      ${item.open ? `<p>${esc(item.summary)}</p>` : ""}
+      ${extra}
+    </article>`;
+  }).join("");
+  const form = document.getElementById("search-form");
+  if (form) form.onsubmit = event => { event.preventDefault(); searchNotices(new FormData(form).get("q")); };
+}
+async function searchNotices(q) {
+  const target = document.getElementById("search-result");
+  target.textContent = "正在查询…";
+  try {
+    const data = await getJSON("/api/nets/power-grid/notices?page=1&size=8&q=" + encodeURIComponent(q || ""));
+    if (!data.items || !data.items.length) { target.textContent = "没有匹配的公告。"; return; }
+    target.innerHTML = data.items.map(item => `<article style="padding:0.45rem 0;border-bottom:1px solid var(--line)"><b>${esc(item.title)}</b><p class="meta">${esc(item.source)} · ${esc(item.noticeType)} · ${esc(item.createTime)}</p></article>`).join("");
+  } catch (error) {
+    target.textContent = error.message;
+  }
+}
+
+function gb(bytes) {
+  const value = Number(bytes) || 0;
+  if (!value) return "0 GB";
+  return (value / 1024 / 1024 / 1024).toFixed(1) + " GB";
+}
+function size(bytes) {
+  const value = Number(bytes) || 0;
+  if (value >= 1024 * 1024 * 1024) return (value / 1024 / 1024 / 1024).toFixed(1) + " GB";
+  if (value >= 1024 * 1024) return (value / 1024 / 1024).toFixed(1) + " MB";
+  if (value >= 1024) return (value / 1024).toFixed(1) + " KB";
+  return value + " B";
+}
+async function loadStorage() {
+  const data = await getJSON("/admin/storage/");
+  const databases = (data.databases || []).map(item => `<tr><td>${esc(item.role)}</td><td>${esc(item.name)}</td><td>${item.holdsNotices ? "当前存公告" : "暂不存公告"}</td><td>${item.exists ? "已建库" : data.online ? "尚未写入" : "未连接"}</td></tr>`).join("");
+  const collections = (data.collections || []).map(item => `<tr><td>${esc(item.name)}</td><td>${item.count}</td></tr>`).join("") || "<tr><td colspan='2'>还没有公告表</td></tr>";
+  const days = (data.days || []).map(item => `<tr><td>${esc(item.day)}</td><td>${item.inserted}</td><td>${item.collected}</td></tr>`).join("");
+  document.getElementById("storage-body").innerHTML = `
+    <div class="stats">
+      <article class="card"><p class="meta">连接</p><strong>${data.online ? "已连通" : "未连通"}</strong><p class="meta">${esc(data.reason || "可以读写")}</p></article>
+      <article class="card"><p class="meta">当前公告库</p><strong>${esc(data.current)}</strong><p class="meta">占用 ${size(data.dataBytes)}</p></article>
+      <article class="card"><p class="meta">公告总量</p><strong>${data.noticeCount || 0}</strong><p class="meta">${(data.collections || []).length} 张公告表</p></article>
+      <article class="card"><p class="meta">本机暂存</p><strong>${data.spoolCount || 0}</strong><p class="meta">库不通时先写在这里</p></article>
+    </div>
+    <article class="card scroll" style="margin-bottom:0.75rem">
+      <table>
+        <caption>三个库</caption>
+        <thead><tr><th scope="col">用途</th><th scope="col">库名</th><th scope="col">是否存公告</th><th scope="col">状态</th></tr></thead>
+        <tbody>${databases}</tbody>
+      </table>
+    </article>
+    <div class="split">
+      <article class="card scroll">
+        <table><caption>公告表</caption><thead><tr><th scope="col">表</th><th scope="col">条数</th></tr></thead><tbody>${collections}</tbody></table>
+      </article>
+      <article class="card scroll">
+        <table>
+          <caption>最近 14 天</caption>
+          <thead><tr><th scope="col">日期</th><th scope="col">新插入</th><th scope="col">采集保存</th></tr></thead>
+          <tbody>${days}</tbody>
+        </table>
+        <p class="meta">新插入是当天第一次写进公告库的条数。采集保存是当天任务记下的保存条数。没有入库时间的旧数据只算在总量里。</p>
+      </article>
+    </div>`;
+}
+async function loadNodes() {
+  const data = await getJSON("/admin/nodes/");
+  const host = data.host || {};
+  const memory = host.memory || {};
+  const crawlers = (data.crawlers || []).map(item => esc(item.name) + "（" + item.pid + "）").join("、") || "没有";
+  const nodeRows = (data.nodes || []).map(item => `<tr><td>${esc(item.id)}</td><td>${esc((item.roles || []).join("、"))}</td><td>${esc(item.accept)}</td></tr>`).join("");
+  document.getElementById("node-body").innerHTML = `
+    <div class="stats">
+      <article class="card"><p class="meta">系统</p><strong>${esc(host.system)} ${esc(host.release)}</strong><p class="meta">${esc(host.hostname)} · Python ${esc(host.python)}</p></article>
+      <article class="card"><p class="meta">处理器</p><strong>${esc(host.cpuCount)} 核</strong><p class="meta">${esc(host.processor)}</p></article>
+      <article class="card"><p class="meta">内存 ${memory.percent || 0}%</p><progress max="100" value="${memory.percent || 0}">${memory.percent || 0}%</progress><p class="meta">${gb(memory.used)} / ${gb(memory.total)}</p></article>
+      <article class="card"><p class="meta">已启动</p><strong>${data.crawlerCount || 0} 个采集</strong><p class="meta">${data.browsers || 0} 个浏览器进程</p></article>
+    </div>
+    <article class="card scroll">
+      <p class="meta">正在采集：${crawlers}</p>
+      <table>
+        <caption>节点配置</caption>
+        <thead><tr><th scope="col">节点</th><th scope="col">职责</th><th scope="col">接收的源头</th></tr></thead>
+        <tbody>${nodeRows}</tbody>
+      </table>
+    </article>`;
+}
+
+showPage();
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  if (page() === "collect" && editing) return;
+  loadPage(page());
+}, 8000);
+</script>
+</body>
+</html>

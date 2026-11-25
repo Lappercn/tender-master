@@ -1,0 +1,15 @@
+pymongo
+fastapi
+uvicorn
+selenium
+webdriver_manager
+schedule
+requests
+ddddocr
+psutil>=7,<8
+textual>=8,<9
+tzdata
+beautifulsoup4
+undetected-chromedriver
+setuptools
+pywin32; sys_platform == "win32"

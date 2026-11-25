@@ -1,0 +1,59 @@
+html, body, #app, .app { height: 100%; margin: 0; }
+.aside { background: #001529; }
+.logo {
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 20px;
+  color: #fff;
+}
+.logo strong { font-size: 16px; font-weight: 600; }
+.logo span { margin-top: 2px; color: rgba(255, 255, 255, 0.55); font-size: 12px; }
+.aside .el-menu { border-right: 0; }
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-bottom: 1px solid #ebeef5;
+}
+.header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.main { background: #f0f2f5; }
+.gap { margin-bottom: 16px; }
+.pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+.request {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #f4f4f5;
+  border-radius: 4px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+.body {
+  margin: 8px 0 0;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: #fafafa;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.log {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  background: #1d1e1f;
+  color: #e5eaf3;
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
