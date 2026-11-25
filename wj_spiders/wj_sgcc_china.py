@@ -19,6 +19,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from pymongo import MongoClient
 
 from selenium.webdriver.common.action_chains import ActionChains
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 # ================= Configuration =================

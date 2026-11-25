@@ -16,6 +16,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from pymongo import MongoClient, errors
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 # ==========================================
@@ -27,7 +29,7 @@ COLLECTION_NAME = config.COLLECTION_NAME
 LOG_COLLECTION_NAME = config.LOG_COLLECTION_NAME
 
 SOURCE_NAME = "重庆市政府采购网"
-FILTER_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "喂给模型的内容", "重庆公共交易平台", "标讯类型l筛选器.html")
+FILTER_HTML_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "喂给模型的内容", "重庆公共交易平台", "标讯类型l筛选器.html")
 
 # ==========================================
 # Setup Logging
