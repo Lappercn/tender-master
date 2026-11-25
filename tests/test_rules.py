@@ -86,6 +86,14 @@ class LayoutTest(unittest.TestCase):
         self.assertTrue(all(job["targetNode"] == "worker-sgcc" for job in split if job["crawlerId"] == "sgcc_ecp"))
         self.assertTrue(all(job["targetNode"] == "worker-csg" for job in split if job["crawlerId"] == "csg_supply"))
 
+    def test_chongqing_relative_date_normalization(self):
+        from crawl.spiders.ccgp_cq import normalize_cq_date
+        today = datetime.date(2026, 11, 25)
+        self.assertEqual(normalize_cq_date("3小时前", today), "2026-11-25")
+        self.assertEqual(normalize_cq_date("昨天", today), "2026-11-24")
+        self.assertEqual(normalize_cq_date("2天前", today), "2026-11-23")
+        self.assertEqual(normalize_cq_date("2026-11-20", today), "2026-11-20")
+
     def test_breaker_opens_and_cools_down(self):
         moment = datetime.datetime(2026, 11, 17, tzinfo=datetime.timezone.utc)
         breaker = Breaker(limit=3, cooldown_seconds=60)

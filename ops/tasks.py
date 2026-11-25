@@ -202,6 +202,43 @@ class TaskQueue:
     def list_nodes(self):
         return list(self.nodes.find().sort("_id", 1))
 
+    def list_tasks(self, status="", crawler_id="", limit=30):
+        query = {}
+        if status:
+            query["status"] = status
+        if crawler_id:
+            query["crawlerId"] = crawler_id
+        rows = list(self.tasks.find(query).sort("createdAt", -1).limit(max(1, min(100, int(limit or 30)))))
+        for row in rows:
+            row["id"] = str(row.pop("_id", ""))
+            for field in ("createdAt", "availableAt", "startedAt", "finishedAt", "leaseUntil"):
+                val = row.get(field)
+                if isinstance(val, datetime.datetime):
+                    row[field] = val.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        return rows
+
+    def list_breakers(self):
+        return {item["_id"]: item.get("snapshot") or {} for item in self.breakers.find()}
+
+    def clear_breaker(self, node_id, crawler_id=""):
+        saved = self.breakers.find_one({"_id": node_id}) or {}
+        snap = dict(saved.get("snapshot") or {})
+        failures = dict(snap.get("failures") or {})
+        open_until = dict(snap.get("openUntil") or {})
+        if crawler_id:
+            failures.pop(crawler_id, None)
+            open_until.pop(crawler_id, None)
+        else:
+            failures.clear()
+            open_until.clear()
+        self.save_breaker(node_id, {"failures": failures, "openUntil": open_until})
+        return {"failures": failures, "openUntil": open_until}
+
+    def clear_tasks(self, status=""):
+        query = {"status": status} if status else {"status": {"$in": ["pending", "retry_wait", "failed", "success"]}}
+        result = self.tasks.delete_many(query)
+        return int(result.deleted_count)
+
     def load_breaker(self, node_id):
         return self.breakers.find_one({"_id": node_id}) or {}
 

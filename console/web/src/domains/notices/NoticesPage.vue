@@ -259,8 +259,17 @@ async function openDetail(row) {
 onMounted(async () => {
   try {
     const catalog = await listCatalog()
-    const net = (catalog.items || []).find(item => item.open)
-    sources.value = net?.sources || []
+    const seen = new Set()
+    const allSources = []
+    for (const net of catalog.items || []) {
+      for (const src of net.sources || []) {
+        if (!seen.has(src.id)) {
+          seen.add(src.id)
+          allSources.push(src)
+        }
+      }
+    }
+    sources.value = allSources
   } catch (error) {
     tell(error.message, "error")
   }

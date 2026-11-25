@@ -52,6 +52,7 @@ def _fail(exc):
 @router.get("/")
 def notices(
     request: Request,
+    net: str = "",
     q: str = "",
     noticeType: str = "",
     area: str = "",
@@ -60,7 +61,7 @@ def notices(
     size: int = Query(10, ge=1, le=50),
 ):
     try:
-        return search_net(_store(request), "power-grid", q, noticeType, area, source, page, size)
+        return search_net(_store(request), net or "all", q, noticeType, area, source, page, size)
     except (KeyError, ValueError, RuntimeError) as exc:
         _fail(exc)
 
@@ -68,7 +69,7 @@ def notices(
 @router.get("/{source_id}/{content_id}")
 def notice(source_id: str, content_id: str, request: Request):
     try:
-        found = read_notice(_store(request), "power-grid", content_id, source_id)
+        found = read_notice(_store(request), "all", content_id, source_id)
     except (KeyError, ValueError, RuntimeError) as exc:
         _fail(exc)
     if not found:

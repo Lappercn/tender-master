@@ -137,12 +137,25 @@
 
 ### 一、 新版「六张网」领域驱动（DDD）插件化模块（`collect/` & `crawl/`）
 
-面向「六张网」基础设施设计的模块化架构，支持主从队列分发、断网本地暂存回放（Spool & Replay）、节点熔断与独立浏览器沙箱回收：
+面向「六张网」基础设施设计的模块化架构，已将全部 **15 个核心公开采购源头** 完整纳入插件体系，支持主从队列分发、断网本地暂存回放（Spool & Replay）、节点熔断与独立浏览器沙箱回收：
 
 | 源头 ID | 所属业务网 | 平台名称 | 官方网址 | 代码位置 | 特色能力说明 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`sgcc_ecp`** | 新型电网 | **国家电网新一代电子商务平台** | `ecp.sgcc.com.cn` | [`collect/sources/sgcc_ecp/`](./collect/sources/sgcc_ecp) / [`crawl/spiders/sgcc.py`](./crawl/spiders/sgcc.py) | 覆盖招标/采购/候选人/结果栏目，支持通过 URL 参数 `noticeId` + `noticeDetId` 构造公开附件下载 |
 | **`csg_supply`** | 新型电网 | **中国南方电网供应链统一服务平台** | `www.bidding.csg.cn` | [`collect/sources/csg_supply/`](./collect/sources/csg_supply) / [`crawl/spiders/csg.py`](./crawl/spiders/csg.py) | 支持多栏目分页解析、正文清洗、预算金额与多联系人组合提取、公开附件落盘 |
+| **`chnenergy_bid`** | 新型电网 | **国家能源招标网 (国能e招)** | `www.chnenergybidding.com.cn` | [`collect/sources/chnenergy_bid/`](./collect/sources/chnenergy_bid) / [`crawl/spiders/chnenergy.py`](./crawl/spiders/chnenergy.py) | 覆盖招标、资格预审、非招标、中标、变更、候选人公示、终止公告 7 大公开栏目 |
+| **`huaneng_ec`** | 新型电网 | **中国华能集团电子商务平台** | `ec.chng.com.cn` | [`collect/sources/huaneng_ec/`](./collect/sources/huaneng_ec) / [`crawl/spiders/huaneng.py`](./crawl/spiders/huaneng.py) | 覆盖招标专栏与非招标专栏 7 大公开栏目，支持 SPA 动态表格与详情提取 |
+| **`ccgp_gov`** | 水网 / 政务 | **中国政府采购网** | `search.ccgp.gov.cn` | [`collect/sources/ccgp_gov/`](./collect/sources/ccgp_gov) / [`crawl/spiders/ccgp.py`](./crawl/spiders/ccgp.py) | 覆盖公开招标、询价、竞争性谈判、磋商、单一来源、中标/成交等 12 个政府采购栏目 |
+| **`ggzy_gov`** | 水网 / 政务 | **全国公共资源交易平台** | `www.ggzy.gov.cn` | [`collect/sources/ggzy_gov/`](./collect/sources/ggzy_gov) / [`crawl/spiders/ggzy.py`](./crawl/spiders/ggzy.py) | 覆盖工程建设与政府采购两大公开交易汇总分类，支持嵌套 `iframe` 正文提取 |
+| **`ccgp_chongqing`** | 水网 / 政务 | **重庆市政府采购网** | `www.ccgp-chongqing.gov.cn` | [`collect/sources/ccgp_chongqing/`](./collect/sources/ccgp_chongqing) / [`crawl/spiders/ccgp_cq.py`](./crawl/spiders/ccgp_cq.py) | 支持相对时间与绝对日期归一化、采购人/代理机构列表元数据与正文联合提取 |
+| **`cfcpn_fin`** | 算力网 | **金采网 (中国金融集中采购网)** | `www.cfcpn.com` | [`collect/sources/cfcpn_fin/`](./collect/sources/cfcpn_fin) / [`crawl/spiders/cfcpn.py`](./crawl/spiders/cfcpn.py) | 覆盖金融科技与数据算力相关的采购、征集、结果、更正 4 大栏目 |
+| **`chinatelecom_sun`** | 新一代通信网 | **中国电信阳光采购网** | `caigou.chinatelecom.com.cn` | [`collect/sources/chinatelecom_sun/`](./collect/sources/chinatelecom_sun) / [`crawl/spiders/chinatelecom.py`](./crawl/spiders/chinatelecom.py) | 覆盖资格预审、招标、询比、谈判、政企招募、结果公示等 10 大通信采购栏目 |
+| **`cnpc_bid`** | 城市地下管网 | **中国石油电子招标投标交易平台** | `www.cnpcbidding.com` | [`collect/sources/cnpc_bid/`](./collect/sources/cnpc_bid) / [`crawl/spiders/cnpc.py`](./crawl/spiders/cnpc.py) | 覆盖招标公告、资格预审及 4 类中标候选人/结果公告栏目，内置安全验证感知保护 |
+| **`sinochem_ebid`** | 城市地下管网 | **中化商务电子招投标平台** | `e.sinochemitc.com` | [`collect/sources/sinochem_ebid/`](./collect/sources/sinochem_ebid) / [`crawl/spiders/sinochem.py`](./crawl/spiders/sinochem.py) | 覆盖招标/预审/变更、评标/中标结果、非招标采购 3 大石化与管网相关板块 |
+| **`guotie_95306`** | 物流网 | **国铁采购平台 (原 95306)** | `cg.95306.cn` | [`collect/sources/guotie_95306/`](./collect/sources/guotie_95306) / [`crawl/spiders/guotie.py`](./crawl/spiders/guotie.py) | 覆盖铁路物资与工程采购、变更、结果 3 大公开栏目 |
+| **`chinapost_11185`** | 物流网 | **中国邮政电子采购与供应平台** | `cg.11185.cn` | [`collect/sources/chinapost_11185/`](./collect/sources/chinapost_11185) / [`crawl/spiders/chinapost.py`](./crawl/spiders/chinapost.py) | 支持列表元数据（项目编号/采购方式/截止时间）提取与详情页内嵌 PDF 原文落盘 |
+| **`airchina_pur`** | 物流网 | **中国国航 (中航集团采购管理平台)** | `pur.airchina.com.cn` | [`collect/sources/airchina_pur/`](./collect/sources/airchina_pur) / [`crawl/spiders/airchina.py`](./crawl/spiders/airchina.py) | 覆盖采购公告、澄清公告、中标公示、结果公告、其他公告 5 大民航采购栏目 |
+| **`tobacco_cgjy`** | 物流网 | **中国烟草电子采购平台** | `cgjy.tobacco.com.cn` | [`collect/sources/tobacco_cgjy/`](./collect/sources/tobacco_cgjy) / [`crawl/spiders/tobacco.py`](./crawl/spiders/tobacco.py) | 覆盖招标、资格预审、变更、中标候选人公示、结果公告 5 大公开栏目 |
 
 ---
 

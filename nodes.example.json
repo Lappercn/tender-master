@@ -9,17 +9,34 @@
       "fingerprint": "fixed"
     },
     {
-      "node_id": "worker-sgcc",
+      "node_id": "worker-grid",
       "roles": ["worker"],
-      "accept": ["sgcc_ecp"],
+      "accept": ["sgcc_ecp", "csg_supply", "chnenergy_bid", "huaneng_ec"],
       "headless": true,
       "browser": "undetected",
       "fingerprint": "fixed"
     },
     {
-      "node_id": "worker-csg",
+      "node_id": "worker-water-gov",
       "roles": ["worker"],
-      "accept": ["csg_supply"],
+      "accept": ["ccgp_gov", "ggzy_gov", "ccgp_chongqing"],
+      "headless": true,
+      "browser": "undetected",
+      "fingerprint": "rotate"
+    },
+    {
+      "node_id": "worker-industry",
+      "roles": ["worker"],
+      "accept": [
+        "cnpc_bid",
+        "sinochem_ebid",
+        "chinatelecom_sun",
+        "guotie_95306",
+        "chinapost_11185",
+        "airchina_pur",
+        "tobacco_cgjy",
+        "cfcpn_fin"
+      ],
       "headless": true,
       "browser": "undetected",
       "fingerprint": "rotate"

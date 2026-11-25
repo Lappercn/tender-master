@@ -42,7 +42,7 @@ def grid_notices(
     q: str = Query("", description="关键词。按标题、采购人、项目编号、摘要做包含查询，不会当成正则。"),
     noticeType: str = Query("", description="公告类型，例如招标公告。空着表示不限。"),
     area: str = Query("", description="地区，例如广东。空着表示不限。"),
-    source: str = Query("", description="采集源头编号。空着则国家电网和南方电网一起查。"),
+    source: str = Query("", description="采集源头编号。空着则新型电网全部源头一起查。"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
 ):
@@ -63,10 +63,47 @@ def grid_notice(content_id: str, request: Request, source: str = Query("", descr
     return found
 
 
-@router.get("/api/nets/power-grid/notices/{content_id}/files/{file_key}", summary="下载公告附件")
+@router.get("/api/nets/power-grid/notices/{content_id}/files/{file_key}", summary="下载新型电网公告附件")
 def grid_file(content_id: str, file_key: str, request: Request, source: str = Query("", description="知道源头时带上。")):
+    return _download_net_file("power-grid", content_id, file_key, request, source)
+
+
+@router.get("/api/nets/{net_id}/notices", summary="按六张网查询公告")
+def net_notices(
+    net_id: str,
+    request: Request,
+    q: str = Query("", description="关键词。按标题、采购人、项目编号、摘要做包含查询，不会当成正则。"),
+    noticeType: str = Query("", description="公告类型，例如招标公告。空着表示不限。"),
+    area: str = Query("", description="地区，例如广东。空着表示不限。"),
+    source: str = Query("", description="采集源头编号。空着则这张网下的全部源头一起查。"),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+):
     try:
-        net = require_open("power-grid")
+        return search_net(_store(request), net_id, q, noticeType, area, source, page, size)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        _fail(exc)
+
+
+@router.get("/api/nets/{net_id}/notices/{content_id}", summary="查看某张网的一条公告")
+def net_notice(net_id: str, content_id: str, request: Request, source: str = Query("", description="知道源头时带上，查找更快。")):
+    try:
+        found = read_notice(_store(request), net_id, content_id, source)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        _fail(exc)
+    if not found:
+        raise HTTPException(404, "没有这条公告")
+    return found
+
+
+@router.get("/api/nets/{net_id}/notices/{content_id}/files/{file_key}", summary="下载公告附件")
+def net_file(net_id: str, content_id: str, file_key: str, request: Request, source: str = Query("", description="知道源头时带上。")):
+    return _download_net_file(net_id, content_id, file_key, request, source)
+
+
+def _download_net_file(net_id: str, content_id: str, file_key: str, request: Request, source: str = ""):
+    try:
+        net = require_open(net_id)
         if source and source not in net.source_ids:
             raise ValueError("这个源头不在这张网的查询范围里")
         source_ids = (source,) if source else net.source_ids

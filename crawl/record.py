@@ -35,6 +35,12 @@ def build_notice(
     project_code="",
     project_status="",
     purchaser_hint="",
+    agent_hint="",
+    area_hint="",
+    industry_hint="",
+    biz_net="",
+    purchase_method_hint="",
+    tender_end_time_hint="",
     extra=None,
 ):
     text = detail_text or ""
@@ -54,6 +60,11 @@ def build_notice(
         extra_data["annexNames"] = found_names
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     bidder, amount = extract_winning(text)
+    resolved_net = biz_net
+    if not resolved_net:
+        from collect.sources.registry import source_map
+        src_obj = source_map().get(crawler_id)
+        resolved_net = getattr(src_obj, "net_name", "") or BIZ_NET
     return {
         "contentId": content_id,
         "siteNoticeId": site_notice_id or None,
@@ -69,15 +80,15 @@ def build_notice(
         "crawl_time": now,
         "nodeId": node_id,
         "noticeType": classify_notice(title, channel_label),
-        "area": guess_area(source, title, purchaser),
-        "industry": INDUSTRY,
-        "bizNet": BIZ_NET,
+        "area": area_hint or guess_area(source, title, purchaser),
+        "industry": industry_hint or INDUSTRY,
+        "bizNet": resolved_net,
         "budget": budget,
         "budget_label": budget_label,
-        "tenderEndTime": extract_end_time(text),
+        "tenderEndTime": extract_end_time(text) or tender_end_time_hint or None,
         "purchaser": purchaser,
-        "agent": extract_agent(text),
-        "purchaseMethod": extract_purchase_method(text),
+        "agent": extract_agent(text) or agent_hint or None,
+        "purchaseMethod": extract_purchase_method(text) or purchase_method_hint or None,
         "winningBidder": bidder,
         "winningAmount": amount,
         "briefText": text[:BRIEF_LIMIT] if text else "",

@@ -1,14 +1,22 @@
 <template>
   <el-row :gutter="16">
-    <el-col v-for="item in closed" :key="item.id" :xs="24" :sm="12" :lg="8">
-      <el-card class="gap" shadow="hover">
+    <el-col v-for="item in items" :key="item.id" :xs="24" :sm="12" :lg="8">
+      <el-card
+        class="gap net-card"
+        :shadow="selectedNetId === item.id ? 'always' : 'hover'"
+        :style="selectedNetId === item.id ? 'border-color: #409eff' : ''"
+        @click="chooseNet(item)"
+      >
         <template #header>
           <div class="bar">
             <span>{{ item.name }}</span>
-            <el-tag type="info">未开放</el-tag>
+            <el-tag :type="item.open ? 'success' : 'info'">{{ item.open ? "已开放" : "未开放" }}</el-tag>
           </div>
         </template>
         <p class="el-text">{{ item.summary }}</p>
+        <p class="el-text" style="margin-top: 6px; font-size: 12px">
+          源头（{{ (item.sources || []).length }}）：{{ sourceNames(item) || "暂无" }}
+        </p>
       </el-card>
     </el-col>
   </el-row>
@@ -17,7 +25,12 @@
     <template #header>
       <div class="bar">
         <span>{{ opened.name }} · 演练场</span>
-        <el-tag type="success">已开放</el-tag>
+        <div class="bar">
+          <el-select v-model="selectedNetId" style="width: 180px" @change="onNetChange">
+            <el-option v-for="item in openNets" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+          <el-tag type="success">已开放</el-tag>
+        </div>
       </div>
     </template>
     <p>{{ opened.summary }}</p>
@@ -83,11 +96,12 @@
 import { computed, onMounted, reactive, ref } from "vue"
 import { tell } from "../../shared/feedback.js"
 import NoticeDetail from "../../shared/NoticeDetail.vue"
-import { listNets, readGrid, searchGrid } from "./api.js"
+import { listNets, readNetNotice, searchNet } from "./api.js"
 
 const items = ref([])
-const opened = computed(() => items.value.find(item => item.open) || null)
-const closed = computed(() => items.value.filter(item => !item.open))
+const selectedNetId = ref("power-grid")
+const openNets = computed(() => items.value.filter(item => item.open))
+const opened = computed(() => items.value.find(item => item.id === selectedNetId.value && item.open) || openNets.value[0] || null)
 const form = reactive({ q: "", noticeType: "", area: "", source: "" })
 const page = ref(1)
 const size = ref(10)
@@ -105,6 +119,16 @@ const detailPath = ref("")
 function sourceNames(item) {
   return (item.sources || []).map(source => source.name).join("、")
 }
+function chooseNet(item) {
+  if (!item?.open) return
+  selectedNetId.value = item.id
+  form.source = ""
+  run(1)
+}
+function onNetChange() {
+  form.source = ""
+  run(1)
+}
 function reset() {
   form.q = ""
   form.noticeType = ""
@@ -117,7 +141,7 @@ async function run(nextPage) {
   if (typeof nextPage === "number") page.value = nextPage
   loading.value = true
   error.value = ""
-  const call = searchGrid({ ...form, page: page.value, size: size.value })
+  const call = searchNet(opened.value.id, { ...form, page: page.value, size: size.value })
   requestPath.value = call.path
   try {
     const data = await call.run()
@@ -132,12 +156,12 @@ async function run(nextPage) {
   }
 }
 async function openDetail(row) {
-  if (!row?.contentId) return
+  if (!row?.contentId || !opened.value) return
   detailOpen.value = true
   detailLoading.value = true
   detail.value = null
   detailError.value = ""
-  const call = readGrid(row.contentId, row.crawlerId)
+  const call = readNetNotice(opened.value.id, row.contentId, row.crawlerId)
   detailPath.value = call.path
   try {
     detail.value = await call.run()
@@ -151,9 +175,16 @@ onMounted(async () => {
   try {
     const data = await listNets()
     items.value = data.items || []
+    if (!items.value.some(item => item.id === selectedNetId.value && item.open)) {
+      selectedNetId.value = openNets.value[0]?.id || "power-grid"
+    }
     await run(1)
   } catch (err) {
     tell(err.message, "error")
   }
 })
 </script>
+
+<style scoped>
+.net-card { cursor: pointer; transition: border-color 0.2s; }
+</style>
