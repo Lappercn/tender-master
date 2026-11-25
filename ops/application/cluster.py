@@ -234,18 +234,18 @@ def run_worker_once(node_id=None):
         "--once",
     ]
     LOGS.mkdir(parents=True, exist_ok=True)
-    handle = open(LOGS / f"worker_{target_node}.log", "a", encoding="utf-8")
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
-    proc = subprocess.Popen(
-        command,
-        cwd=str(ROOT),
-        stdout=handle,
-        stderr=subprocess.STDOUT,
-        env=env,
-        creationflags=CREATE_GROUP,
-    )
+    with open(LOGS / f"worker_{target_node}.log", "a", encoding="utf-8") as handle:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(ROOT),
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            env=env,
+            creationflags=CREATE_GROUP,
+        )
     return {"ok": True, "pid": proc.pid, "message": f"节点 {target_node} 已在后台拉起单次领任务进程 ({proc.pid})"}
 
 
@@ -282,18 +282,18 @@ def start_daemon(role, node_id=None):
         role,
     ]
     LOGS.mkdir(parents=True, exist_ok=True)
-    handle = open(LOGS / f"daemon_{role}_{target_node}.log", "a", encoding="utf-8")
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
-    proc = subprocess.Popen(
-        command,
-        cwd=str(ROOT),
-        stdout=handle,
-        stderr=subprocess.STDOUT,
-        env=env,
-        creationflags=CREATE_GROUP,
-    )
+    with open(LOGS / f"daemon_{role}_{target_node}.log", "a", encoding="utf-8") as handle:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(ROOT),
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            env=env,
+            creationflags=CREATE_GROUP,
+        )
     DAEMONS.mkdir(parents=True, exist_ok=True)
     _daemon_path(role, target_node).write_text(
         json.dumps({"pid": proc.pid, "role": role, "nodeId": target_node}),

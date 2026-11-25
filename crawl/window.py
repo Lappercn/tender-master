@@ -78,7 +78,16 @@ def outside_detail(text, start, end, hours):
 
 
 def _parse_moment(text):
-    head = text[:19].replace("T", " ")
+    head = (text or "").strip()[:19].replace("T", " ").replace("/", "-").replace(".", "-")
+    match = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?", head)
+    if match:
+        try:
+            year, month, day = int(match.group(1)), int(match.group(2)), int(match.group(3))
+            if match.group(4) is not None and match.group(5) is not None:
+                return datetime.datetime(year, month, day, int(match.group(4)), int(match.group(5)))
+            return datetime.datetime(year, month, day)
+        except ValueError:
+            return None
     for pattern, size in (("%Y-%m-%d %H:%M", 16), ("%Y-%m-%d", 10)):
         try:
             return datetime.datetime.strptime(head[:size], pattern)

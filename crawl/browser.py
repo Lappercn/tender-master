@@ -223,6 +223,7 @@ def _open_undetected(profile):
         browser_executable_path=binary,
         use_subprocess=True,
     )
+    setattr(driver, "_six_driver_dir", str(session))
     return driver, profile_dir
 
 
@@ -279,7 +280,8 @@ def browser_session(profile, source_id=""):
     driver, profile_dir = open_browser(profile)
     key = source_id or "browser"
     pids = _pids(driver)
-    remember(key, os.path.basename(profile_dir), pids)
+    driver_dir = getattr(driver, "_six_driver_dir", "")
+    remember(key, os.path.basename(profile_dir), pids, profile_dir=profile_dir, driver_dir=driver_dir)
     hold_job(key, pids)
     try:
         yield driver
@@ -291,3 +293,6 @@ def browser_session(profile, source_id=""):
         # 反检测驱动析构时还会再关一次，Windows 上句柄已经无效。
         driver.quit = lambda: None
         release(key)
+        for temp_dir in (profile_dir, driver_dir):
+            if temp_dir and os.path.isdir(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)

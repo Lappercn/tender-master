@@ -224,7 +224,12 @@ class CollectStore:
         total = 0
         rows = []
         fetch = page * size
-        scopes = read_scopes(source_id) if source_id else [(name, {}) for name in self._notice_names("")]
+        if isinstance(source_id, (list, tuple, set)):
+            scopes = self._multi_scopes(source_id)
+        elif source_id:
+            scopes = read_scopes(source_id)
+        else:
+            scopes = [(name, {}) for name in self._notice_names("")]
         for name, extra in scopes:
             column = self.collect[name]
             scoped = dict(query)
@@ -235,12 +240,35 @@ class CollectStore:
         start = (page - 1) * size
         return {"page": page, "size": size, "total": total, "items": [_public(item) for item in rows[start:start + size]]}
 
+    def _multi_scopes(self, source_ids):
+        grouped = {}
+        order = []
+        for sid in source_ids:
+            for name, extra in read_scopes(sid):
+                if name not in grouped:
+                    grouped[name] = []
+                    order.append(name)
+                grouped[name].append(extra)
+        scopes = []
+        for name in order:
+            extras = grouped[name]
+            if any(not e for e in extras):
+                scopes.append((name, {}))
+            else:
+                cids = [e["crawlerId"] for e in extras if "crawlerId" in e]
+                if len(cids) == 1:
+                    scopes.append((name, {"crawlerId": cids[0]}))
+                else:
+                    scopes.append((name, {"crawlerId": {"$in": list(dict.fromkeys(cids))}}))
+        return scopes
+
     def get_notice(self, source_id, content_id):
         if not self.online:
             raise RuntimeError("存储未连通")
         for name, extra in read_scopes(source_id):
             found = self.collect[name].find_one({"contentId": content_id, **extra})
             if found:
+                found["hasRawHtml"] = bool((found.get("detail") or "").strip())
                 found.pop("detail", None)
                 if found.get("detailText"):
                     from crawl.text import present_text

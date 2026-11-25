@@ -57,7 +57,21 @@ class RuleTest(unittest.TestCase):
         self.assertIn("万", budget)
         self.assertIn("预算", label)
         self.assertEqual(extract_end_time("投标截止时间：2026年11月20日 09:30"), "2026年11月20日 09:30")
+        self.assertEqual(extract_end_time("投标截止时间：2026年11月20日 09时30分"), "2026年11月20日 09时30分")
         self.assertIsNone(extract_end_time("递交截止时间 2026-11-27 17:00:00"))
+
+    def test_date_window_accepts_dot_and_slash_formats(self):
+        start, end = window_bounds(14 * 24, datetime.datetime(2026, 11, 17, 18, 0, 0))
+        self.assertEqual(judge_date("2026.11.10", start, end), "take")
+        self.assertEqual(judge_date("2026/11/5", start, end), "take")
+        self.assertEqual(judge_date("2026.10.28", start, end), "stop")
+
+    def test_area_guessing_covers_provinces_and_major_cities(self):
+        from crawl.extract import guess_area
+        self.assertEqual(guess_area("中国政府采购网", "江苏省南京市某医院设备采购", ""), "江苏")
+        self.assertEqual(guess_area("全国公共资源交易平台", "成都高新区市政管网改造", ""), "四川")
+        self.assertEqual(guess_area("中国南方电网供应链统一服务平台", "深圳供电局物资采购", ""), "广东")
+        self.assertEqual(guess_area("中国南方电网供应链统一服务平台", "总部通用设备采购", ""), "南方电网覆盖区域")
 
 
 class LayoutTest(unittest.TestCase):

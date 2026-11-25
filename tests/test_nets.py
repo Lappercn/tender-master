@@ -89,3 +89,14 @@ class NetCatalogTest(unittest.TestCase):
         from ops.application.notices import editable_patch
         patch = editable_patch({"title": "新标题", "detailText": "原文", "contentId": "abc", "area": "广东"})
         self.assertEqual(patch, {"area": "广东"})
+
+    def test_multi_scopes_merges_same_net_collections(self):
+        from ops.storage import CollectStore
+        store = CollectStore.__new__(CollectStore)
+        scopes = store._multi_scopes(("sgcc_ecp", "csg_supply", "chnenergy_bid", "huaneng_ec"))
+        shared = [item for item in scopes if item[0].startswith("notices_power_grid")]
+        self.assertEqual(len(shared), 1)
+        self.assertEqual(
+            shared[0][1],
+            {"crawlerId": {"$in": ["sgcc_ecp", "csg_supply", "chnenergy_bid", "huaneng_ec"]}},
+        )

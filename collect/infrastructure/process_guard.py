@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -10,7 +11,7 @@ RUNTIME = ROOT / "runtime" / "browsers"
 MARKER = re.compile(r"six-chrome-[A-Za-z0-9_]+")
 
 
-def remember(source_id, marker, pids):
+def remember(source_id, marker, pids, profile_dir="", driver_dir=""):
     if not source_id:
         return
     RUNTIME.mkdir(parents=True, exist_ok=True)
@@ -19,6 +20,8 @@ def remember(source_id, marker, pids):
         "pythonPid": os.getpid(),
         "marker": marker,
         "pids": [int(pid) for pid in pids if pid],
+        "profileDir": profile_dir or "",
+        "driverDir": driver_dir or "",
     }
     path = RUNTIME / f"{source_id}.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -137,6 +140,9 @@ def release(source_id):
         kill_tree(pid)
     for pid in pids_with_marker(record.get("marker") or ""):
         kill_tree(pid)
+    for temp_dir in (record.get("profileDir"), record.get("driverDir")):
+        if temp_dir and os.path.isdir(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
     forget(source_id)
     job = _JOBS.pop(source_id, None)
     if job is None:

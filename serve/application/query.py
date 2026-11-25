@@ -41,22 +41,17 @@ def search_net(store, net_id="", text="", notice_type="", area="", source_id="",
         raise RuntimeError(store.reason or "存储未连通")
     page = max(1, int(page or 1))
     size = min(50, max(1, int(size or 20)))
-    total = 0
-    rows = []
-    fetch = page * size
-    for one in source_ids:
-        found = store.search_notices(one, text, notice_type, area, 1, fetch)
-        total += found["total"]
-        rows.extend(found["items"])
-    rows.sort(key=lambda item: item.get("createTime") or "", reverse=True)
-    start = (page - 1) * size
+    if not net_id or net_id == "all":
+        found = store.search_notices(source_id or "", text, notice_type, area, page, size)
+    else:
+        found = store.search_notices(source_ids, text, notice_type, area, page, size)
     return {
         "net": net_key,
         "netName": net_name,
         "page": page,
         "size": size,
-        "total": total,
-        "items": [_view(item) for item in rows[start:start + size]],
+        "total": found["total"],
+        "items": [_view(item) for item in found["items"]],
     }
 
 
@@ -79,7 +74,8 @@ def read_notice(store, net_id, content_id, source_id=""):
         found = store.get_notice(one, content_id)
         if found:
             found.pop("_id", None)
-            found["hasRawHtml"] = bool((found.get("detail") or "").strip())
+            if "hasRawHtml" not in found:
+                found["hasRawHtml"] = bool((found.get("detail") or "").strip())
             found.pop("detail", None)
             actual_net_id = net_for_source(one).id if one else default_net_id
             found["files"] = public_files(content_id, found.get("files"), net_id=actual_net_id)
