@@ -1,22 +1,31 @@
 <template>
-  <el-row :gutter="16">
-    <el-col v-for="item in items" :key="item.id" :xs="24" :sm="12" :lg="8">
+  <el-row :gutter="16" class="kpi-row">
+    <el-col v-for="item in items" :key="item.id" :xs="24" :sm="12" :md="8">
       <el-card
-        class="gap net-card"
+        class="net-card"
+        :class="{ 'is-selected': selectedNetId === item.id }"
         :shadow="selectedNetId === item.id ? 'always' : 'hover'"
-        :style="selectedNetId === item.id ? 'border-color: #409eff' : ''"
         @click="chooseNet(item)"
       >
         <template #header>
           <div class="bar">
-            <span>{{ item.name }}</span>
-            <el-tag :type="item.open ? 'success' : 'info'">{{ item.open ? "已开放" : "未开放" }}</el-tag>
+            <span style="font-size: 15px">{{ item.name }}</span>
+            <el-tag size="small" :type="item.open ? 'success' : 'info'" effect="light">
+              <span class="status-dot" :class="item.open ? 'is-running' : 'is-idle'"></span>
+              {{ item.open ? "API 已开放" : "未开放" }}
+            </el-tag>
           </div>
         </template>
-        <p class="el-text">{{ item.summary }}</p>
-        <p class="el-text" style="margin-top: 6px; font-size: 12px">
-          源头（{{ (item.sources || []).length }}）：{{ sourceNames(item) || "暂无" }}
-        </p>
+        <p class="net-summary">{{ item.summary }}</p>
+        <div class="net-sources">
+          <el-tag
+            v-for="src in item.sources || []"
+            :key="src.id"
+            size="small"
+            type="info"
+            effect="plain"
+          >{{ src.name }}</el-tag>
+        </div>
       </el-card>
     </el-col>
   </el-row>
@@ -24,46 +33,55 @@
   <el-card v-if="opened" shadow="never">
     <template #header>
       <div class="bar">
-        <span>{{ opened.name }} · 演练场</span>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <span>{{ opened.name }} · Open API 在线演练场（直连 CRM / 业务系统）</span>
+          <el-tag size="small" type="success" effect="plain">GET /api/nets/{{ opened.id }}/notices</el-tag>
+        </div>
         <div class="bar">
-          <el-select v-model="selectedNetId" style="width: 180px" @change="onNetChange">
+          <el-select v-model="selectedNetId" size="small" style="width: 170px" @change="onNetChange">
             <el-option v-for="item in openNets" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
-          <el-tag type="success">已开放</el-tag>
         </div>
       </div>
     </template>
-    <p>{{ opened.summary }}</p>
-    <p class="el-text">来源：{{ sourceNames(opened) }}。这里调用的就是对外接口，和 Swagger 是同一条。</p>
-    <el-form class="gap" :inline="true" @submit.prevent="run(1)">
+    <p style="margin: 0 0 6px; font-size: 13px; color: #334155">{{ opened.summary }}</p>
+    <p class="el-text" style="font-size: 12px; color: #64748b; margin-top: 0">
+      聚合源头：{{ sourceNames(opened) }}。下方调用的即为对外标准 RESTful 接口，可直接同步至企业 CRM 或办公机器人。
+    </p>
+    <el-form class="gap" style="margin-top: 14px" :inline="true" @submit.prevent="run(1)">
       <el-form-item label="关键词">
-        <el-input v-model="form.q" clearable placeholder="标题、采购人、项目编号" style="width: 220px" />
+        <el-input v-model="form.q" clearable placeholder="标题、采购人、项目编号" style="width: 210px" />
       </el-form-item>
       <el-form-item label="类型">
-        <el-input v-model="form.noticeType" clearable placeholder="招标公告" style="width: 140px" />
+        <el-input v-model="form.noticeType" clearable placeholder="如：招标公告" style="width: 140px" />
       </el-form-item>
       <el-form-item label="地区">
-        <el-input v-model="form.area" clearable placeholder="广东" style="width: 120px" />
+        <el-input v-model="form.area" clearable placeholder="如：广东" style="width: 120px" />
       </el-form-item>
       <el-form-item label="源头">
-        <el-select v-model="form.source" clearable placeholder="全部" style="width: 220px">
+        <el-select v-model="form.source" clearable placeholder="当前网全部源头" style="width: 210px">
           <el-option v-for="source in opened.sources" :key="source.id" :label="source.name" :value="source.id" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" native-type="submit" :loading="loading">调用</el-button>
+        <el-button type="primary" native-type="submit" :loading="loading">发起 API 调用</el-button>
         <el-button @click="reset">清空条件</el-button>
       </el-form-item>
     </el-form>
     <el-alert v-if="error" class="gap" type="error" show-icon :closable="false" :title="error" />
     <p v-if="requestPath" class="request">GET {{ requestPath }}</p>
-    <el-table v-loading="loading" :data="rows" empty-text="还没有调用，或这一页没有公告" @row-click="openDetail">
-      <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="source" label="来源" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="noticeType" label="类型" width="120" />
-      <el-table-column prop="area" label="地区" width="90" />
-      <el-table-column prop="createTime" label="时间" width="120" />
-      <el-table-column label="操作" width="90" fixed="right">
+    <el-table v-loading="loading" :data="rows" empty-text="还没有调用，或这一页没有公告" stripe @row-click="openDetail">
+      <el-table-column prop="title" label="标讯标题" min-width="250" show-overflow-tooltip />
+      <el-table-column prop="source" label="来源平台" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="noticeType" label="类型" width="115">
+        <template #default="{ row }">
+          <el-tag v-if="row.noticeType" size="small" effect="light">{{ row.noticeType }}</el-tag>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="area" label="地区" width="100" show-overflow-tooltip />
+      <el-table-column prop="createTime" label="发布日期" width="115" />
+      <el-table-column label="操作" width="85" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
         </template>
@@ -83,7 +101,7 @@
     </div>
   </el-card>
 
-  <el-drawer v-model="detailOpen" title="公告详情" size="760px">
+  <el-drawer v-model="detailOpen" title="API 响应标讯详情" size="780px">
     <p v-if="detailPath" class="request">GET {{ detailPath }}</p>
     <el-alert v-if="detailError" type="error" show-icon :closable="false" :title="detailError" />
     <div v-loading="detailLoading">
@@ -186,5 +204,25 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.net-card { cursor: pointer; transition: border-color 0.2s; }
+.net-card {
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.net-card.is-selected {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+.net-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+}
+.net-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 </style>

@@ -1,29 +1,35 @@
 <template>
   <div v-loading="!data">
-    <el-row v-if="data" :gutter="16" class="gap">
-      <el-col :xs="24" :sm="12" :lg="6">
-        <el-card shadow="hover">
-          <el-statistic :title="`${host.system || ''} ${host.release || ''}`" :value="host.cpuCount || 0" suffix="核" />
-          <p class="el-text">{{ host.hostname }} · Python {{ host.python }}</p>
+    <el-row v-if="data" :gutter="16" class="kpi-row">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="kpi-card">
+          <el-statistic :title="`${host.system || 'OS'} ${host.release || ''}`" :value="host.cpuCount || 0" suffix="核 CPU" />
+          <p class="kpi-sub">{{ host.hostname }} · Python {{ host.python }}</p>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :lg="6">
-        <el-card shadow="hover">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="kpi-card kpi-purple">
           <el-statistic title="内存占用" :value="memory.percent || 0" suffix="%" />
-          <el-progress :percentage="memory.percent || 0" :show-text="false" />
-          <p class="el-text">{{ gb(memory.used) }} / {{ gb(memory.total) }}</p>
+          <el-progress
+            :percentage="memory.percent || 0"
+            :show-text="false"
+            :stroke-width="6"
+            :color="memory.percent > 85 ? '#ef4444' : '#8b5cf6'"
+            style="margin-top: 6px"
+          />
+          <p class="kpi-sub">{{ gb(memory.used) }} / {{ gb(memory.total) }}</p>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :lg="6">
-        <el-card shadow="hover">
-          <el-statistic title="本机采集 / 浏览器" :value="data.crawlerCount || 0" :suffix="`/ ${data.browsers || 0}`" />
-          <p class="el-text">当前节点：{{ data.currentNodeId || "local-1" }}</p>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="kpi-card kpi-green">
+          <el-statistic title="本机采集进程 / 浏览器" :value="data.crawlerCount || 0" :suffix="`/ ${data.browsers || 0}`" />
+          <p class="kpi-sub">当前节点：<strong>{{ data.currentNodeId || "local-1" }}</strong></p>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :lg="6">
-        <el-card shadow="hover">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="kpi-card kpi-amber">
           <el-statistic title="分布式队列任务" :value="totalQueueTasks" />
-          <p class="el-text">
+          <p class="kpi-sub">
             待领 {{ taskCounts.pending || 0 }} · 运行 {{ taskCounts.running || 0 }} · 完成 {{ taskCounts.success || 0 }} · 失败 {{ taskCounts.failed || 0 }}
           </p>
         </el-card>
@@ -33,85 +39,90 @@
     <el-card v-if="data" shadow="never" class="gap">
       <template #header>
         <div class="bar">
-          <span>这台机器与守护进程（{{ data.currentNodeId }}）</span>
-          <div class="bar">
-            <el-tag :type="daemons.master?.running ? 'success' : 'info'">
-              主节点调度器：{{ daemons.master?.running ? `运行中 (${daemons.master.pid})` : "未启动" }}
-            </el-tag>
-            <el-button
-              v-if="!daemons.master?.running"
-              size="small"
-              type="primary"
-              plain
-              :loading="busy"
-              @click="toggleDaemon('master', true)"
-            >启动主节点</el-button>
-            <el-button
-              v-else
-              size="small"
-              type="danger"
-              plain
-              :loading="busy"
-              @click="toggleDaemon('master', false)"
-            >停止主节点</el-button>
+          <span>当前主机与后台守护进程（{{ data.currentNodeId }}）</span>
+          <div class="daemon-bar">
+            <div class="daemon-pill">
+              <span class="status-dot" :class="daemons.master?.running ? 'is-running' : 'is-idle'"></span>
+              <span>主节点调度器：{{ daemons.master?.running ? `运行中 (PID ${daemons.master.pid})` : "待机" }}</span>
+              <el-button
+                v-if="!daemons.master?.running"
+                size="small"
+                type="primary"
+                plain
+                :loading="busy"
+                @click="toggleDaemon('master', true)"
+              >启动</el-button>
+              <el-button
+                v-else
+                size="small"
+                type="danger"
+                plain
+                :loading="busy"
+                @click="toggleDaemon('master', false)"
+              >停止</el-button>
+            </div>
 
-            <el-tag :type="daemons.work?.running ? 'success' : 'info'">
-              采集工作节点：{{ daemons.work?.running ? `运行中 (${daemons.work.pid})` : "未启动" }}
-            </el-tag>
-            <el-button
-              v-if="!daemons.work?.running"
-              size="small"
-              type="primary"
-              plain
-              :loading="busy"
-              @click="toggleDaemon('work', true)"
-            >启动工作节点</el-button>
-            <el-button
-              v-else
-              size="small"
-              type="danger"
-              plain
-              :loading="busy"
-              @click="toggleDaemon('work', false)"
-            >停止工作节点</el-button>
+            <div class="daemon-pill">
+              <span class="status-dot" :class="daemons.work?.running ? 'is-running' : 'is-idle'"></span>
+              <span>采集工作节点：{{ daemons.work?.running ? `运行中 (PID ${daemons.work.pid})` : "待机" }}</span>
+              <el-button
+                v-if="!daemons.work?.running"
+                size="small"
+                type="primary"
+                plain
+                :loading="busy"
+                @click="toggleDaemon('work', true)"
+              >启动</el-button>
+              <el-button
+                v-else
+                size="small"
+                type="danger"
+                plain
+                :loading="busy"
+                @click="toggleDaemon('work', false)"
+              >停止</el-button>
+            </div>
           </div>
         </div>
       </template>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="处理器">{{ host.processor || "—" }}</el-descriptions-item>
-        <el-descriptions-item label="本机正在采集">{{ runningText }}</el-descriptions-item>
+        <el-descriptions-item label="处理器型号" width="120px">{{ host.processor || "—" }}</el-descriptions-item>
+        <el-descriptions-item label="本机正在采集" width="120px">{{ runningText }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
     <el-card v-if="data" shadow="never" class="gap">
       <template #header>
         <div class="bar">
-          <span>分布式节点拓扑（1主多从 / 源头分流）</span>
-          <el-button type="primary" size="small" @click="openAddNode">新增节点</el-button>
+          <span>分布式节点拓扑（1 主多从 / 源头分流）</span>
+          <el-button type="primary" size="small" @click="openAddNode">+ 新增节点</el-button>
         </div>
       </template>
-      <el-table :data="data.nodes" empty-text="还没有节点">
-        <el-table-column prop="id" label="节点编号" width="150">
+      <el-table :data="data.nodes" empty-text="还没有节点" stripe>
+        <el-table-column prop="id" label="节点编号" width="130">
           <template #default="{ row }">
             <strong>{{ row.id }}</strong>
             <el-tag v-if="row.isLocal" size="small" type="success" style="margin-left: 6px">本机</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="85">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.online ? 'success' : 'info'">{{ row.status }}</el-tag>
+            <el-tag size="small" :type="row.online ? 'success' : 'info'">
+              <span class="status-dot" :class="row.online ? 'is-running' : 'is-idle'"></span>
+              {{ row.status }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="职责" width="170">
+        <el-table-column label="节点职责" width="135">
           <template #default="{ row }">{{ (row.roles || []).join("、") }}</template>
         </el-table-column>
-        <el-table-column prop="accept" label="接收的采集源头" min-width="200" show-overflow-tooltip />
-        <el-table-column label="浏览器策略" width="180">
+        <el-table-column prop="accept" label="接收源头" min-width="110" show-overflow-tooltip />
+        <el-table-column label="浏览器策略" min-width="155" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.browser === "selenium" ? "普通 Chrome" : "反检测 Chrome" }} · {{ row.headless ? "无头" : "有界面" }} · {{ row.fingerprint === "rotate" ? "轮换" : "固定" }}
+            {{ row.browser === "selenium" ? "普通" : "反检测" }} · {{ row.headless ? "无头" : "有界面" }} · {{ row.fingerprint === "rotate" ? "轮换" : "固定" }}
           </template>
         </el-table-column>
-        <el-table-column label="熔断保护" min-width="160">
+        <el-table-column label="熔断保护" min-width="105">
           <template #default="{ row }">
             <template v-if="row.breakers && row.breakers.length">
               <el-tag
@@ -123,11 +134,11 @@
               >{{ b.crawlerName }} (至{{ b.until }})</el-tag>
               <el-button link type="primary" size="small" @click="clearBreaker(row.id)">解除</el-button>
             </template>
-            <span v-else class="el-text">正常</span>
+            <el-tag v-else size="small" type="success" effect="plain">正常</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lastSeen" label="最近心跳" width="165" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="lastSeen" label="最近心跳" width="152" />
+        <el-table-column label="操作" width="95" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEditNode(row)">配置</el-button>
             <el-button
@@ -169,22 +180,22 @@
         :closable="false"
         title="MongoDB 未连通，分布式任务队列暂不可用（单机可直接去「采集」页启动源头，结果写本地暂存）"
       />
-      <el-table :data="data.tasks || []" max-height="420" empty-text="队列里还没有任务。点击右上角「派发全量栏目任务」即可按节点分流投入。">
-        <el-table-column prop="label" label="源头" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="channelLabel" label="栏目" min-width="130" show-overflow-tooltip />
-        <el-table-column prop="targetNode" label="分配节点" width="130" />
-        <el-table-column prop="nodeId" label="执行节点" width="130">
+      <el-table :data="data.tasks || []" max-height="420" empty-text="队列里还没有任务。点击右上角「派发全量栏目任务」即可按节点分流投入。" stripe>
+        <el-table-column prop="label" label="源头" min-width="170" show-overflow-tooltip />
+        <el-table-column prop="channelLabel" label="栏目" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="targetNode" label="分配节点" width="115" />
+        <el-table-column prop="nodeId" label="执行节点" width="115">
           <template #default="{ row }">{{ row.nodeId || "—" }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="95">
           <template #default="{ row }">
             <el-tag size="small" :type="taskTagType(row.status)">{{ taskStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="saved" label="保存" width="75" />
-        <el-table-column prop="skipped" label="跳过" width="75" />
-        <el-table-column prop="createdAt" label="投入时间" width="168" />
-        <el-table-column label="说明" min-width="180" show-overflow-tooltip>
+        <el-table-column prop="saved" label="保存" width="70" />
+        <el-table-column prop="skipped" label="跳过" width="70" />
+        <el-table-column prop="createdAt" label="投入时间" width="162" />
+        <el-table-column label="说明" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.error || row.note || "—" }}</template>
         </el-table-column>
       </el-table>
@@ -287,7 +298,7 @@ const taskCounts = computed(() => data.value?.taskCounts || {})
 const totalQueueTasks = computed(() => Object.values(taskCounts.value).reduce((a, b) => a + Number(b || 0), 0))
 const runningText = computed(() => {
   const rows = data.value?.crawlers || []
-  if (!rows.length) return "没有"
+  if (!rows.length) return "当前无运行中的采集进程"
   return rows.map(item => `${item.name}（PID ${item.pid}）`).join("、")
 })
 let timer = 0
@@ -413,3 +424,24 @@ onUnmounted(() => {
   document.removeEventListener("visibilitychange", tick)
 })
 </script>
+
+<style scoped>
+.daemon-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.daemon-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+}
+</style>

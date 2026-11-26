@@ -1,26 +1,56 @@
 <template>
   <template v-if="detail">
+    <div class="detail-hero">
+      <div class="detail-badges">
+        <el-tag v-if="detail.bizNet" size="small" type="primary" effect="dark">{{ detail.bizNet }}</el-tag>
+        <el-tag v-if="detail.noticeType" size="small" type="success" effect="light">{{ detail.noticeType }}</el-tag>
+        <el-tag v-if="detail.area" size="small" type="info" effect="plain">{{ detail.area }}</el-tag>
+        <span class="detail-date">{{ detail.createTime || "—" }}</span>
+      </div>
+      <h2 class="detail-title">{{ detail.title }}</h2>
+      <div class="detail-fingerprint">
+        <span>标题 MD5 指纹 (<code>contentId</code>)：</span>
+        <code>{{ detail.contentId || "—" }}</code>
+      </div>
+    </div>
+
     <section v-for="group in groups" :key="group.title">
       <h3>{{ group.title }}</h3>
       <el-descriptions :column="2" border>
-        <el-descriptions-item v-for="field in group.fields" :key="field.key" :label="field.label" :span="field.span || 1">
-          <a v-if="field.key === 'url' && detail.url" :href="detail.url" target="_blank" rel="noreferrer">{{ detail.url }}</a>
+        <el-descriptions-item
+          v-for="field in group.fields"
+          :key="field.key"
+          :label="field.label"
+          :span="field.span || 1"
+          width="105px"
+        >
+          <a v-if="field.key === 'url' && detail.url" :href="detail.url" target="_blank" rel="noreferrer" class="ext-link">
+            {{ detail.url }} ↗
+          </a>
+          <strong v-else-if="field.key === 'budget' && detail.budget" style="color: #d97706">
+            {{ text(detail[field.key], field.key) }}
+          </strong>
           <span v-else>{{ text(detail[field.key], field.key) }}</span>
         </el-descriptions-item>
       </el-descriptions>
     </section>
 
-    <h3>联系人</h3>
-    <el-table :data="contactRows" border empty-text="没有联系人">
+    <h3>防错配提取联系人（50 字符邻近窗口配对）</h3>
+    <el-table :data="contactRows" border empty-text="未从正文中提取到联系人">
       <el-table-column v-for="column in contactColumns" :key="column" :label="contactLabel(column)" min-width="140">
-        <template #default="{ row }">{{ text(row[column]) }}</template>
+        <template #default="{ row }">
+          <strong v-if="column === 'phone' && row[column]" style="color: #2563eb">{{ text(row[column]) }}</strong>
+          <span v-else>{{ text(row[column]) }}</span>
+        </template>
       </el-table-column>
     </el-table>
 
-    <h3>正文</h3>
-    <p class="field-label">摘要</p>
-    <pre class="body">{{ text(detail.briefText) }}</pre>
-    <p class="field-label">正文</p>
+    <h3>清洗后公告正文</h3>
+    <template v-if="detail.briefText">
+      <p class="field-label">核心摘要</p>
+      <pre class="body">{{ text(detail.briefText) }}</pre>
+    </template>
+    <p class="field-label">正文内容</p>
     <div v-if="bodyBlocks.length">
       <template v-for="(block, index) in bodyBlocks" :key="index">
         <pre v-if="block.type === 'text'" class="body">{{ block.value }}</pre>
@@ -36,55 +66,59 @@
       </template>
     </div>
     <pre v-else class="body">—</pre>
-    <el-descriptions class="gap" :column="2" border>
-      <el-descriptions-item label="原始网页">{{ rawHtmlText }}</el-descriptions-item>
-    </el-descriptions>
-
-    <h3>附件</h3>
-    <el-descriptions class="gap" :column="2" border>
-      <el-descriptions-item label="有附件">{{ text(detail.hasAnnex) }}</el-descriptions-item>
-      <el-descriptions-item label="页面上的附件名">{{ text(annexNames) }}</el-descriptions-item>
-      <el-descriptions-item label="原文件地址" :span="2">
-        <pre class="body">{{ text(detail.fileUrl) }}</pre>
+    <el-descriptions class="gap" style="margin-top: 10px" :column="2" border>
+      <el-descriptions-item label="原始网页存档" width="105px">
+        <el-tag size="small" :type="detail.hasRawHtml ? 'success' : 'info'">{{ rawHtmlText }}</el-tag>
+      </el-descriptions-item>
+      <el-descriptions-item label="整理管道状态" width="105px">
+        <el-tag size="small" type="warning" effect="plain">{{ text(detail.processStatus, 'processStatus') }}</el-tag>
       </el-descriptions-item>
     </el-descriptions>
-    <el-table :data="fileRows" border empty-text="没有附件记录">
-      <el-table-column label="文件" min-width="160" show-overflow-tooltip>
+
+    <h3>本地落盘标书与附件包</h3>
+    <el-descriptions class="gap" :column="2" border>
+      <el-descriptions-item label="含附件" width="105px">{{ text(detail.hasAnnex) }}</el-descriptions-item>
+      <el-descriptions-item label="页面附件名" width="105px">{{ text(annexNames) }}</el-descriptions-item>
+      <el-descriptions-item v-if="detail.fileUrl" label="原文件地址" :span="2">
+        <pre class="body" style="max-height: 120px">{{ text(detail.fileUrl) }}</pre>
+      </el-descriptions-item>
+    </el-descriptions>
+    <el-table :data="fileRows" border empty-text="没有本地附件记录">
+      <el-table-column label="文件名" min-width="170" show-overflow-tooltip>
         <template #default="{ row }">{{ text(row.name) }}</template>
       </el-table-column>
       <el-table-column label="大小" width="90">
         <template #default="{ row }">{{ sizeText(row.size) }}</template>
       </el-table-column>
-      <el-table-column label="已下载" width="90">
-        <template #default="{ row }">{{ text(row.ok) }}</template>
+      <el-table-column label="落盘状态" width="95">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.ok ? 'success' : 'danger'">{{ row.ok ? "已落盘" : "未下载" }}</el-tag>
+        </template>
       </el-table-column>
-      <el-table-column label="失败原因" min-width="140" show-overflow-tooltip>
+      <el-table-column label="失败原因" min-width="130" show-overflow-tooltip>
         <template #default="{ row }">{{ text(row.error) }}</template>
       </el-table-column>
-      <el-table-column label="本地路径" min-width="180" show-overflow-tooltip>
+      <el-table-column label="本地路径" min-width="170" show-overflow-tooltip>
         <template #default="{ row }">{{ text(row.path) }}</template>
       </el-table-column>
-      <el-table-column label="原地址" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">{{ text(row.sourceUrl) }}</template>
-      </el-table-column>
-      <el-table-column label="下载" width="90">
+      <el-table-column label="操作" width="90" fixed="right">
         <template #default="{ row }">
-          <a v-if="row.ok && row.download" :href="row.download">下载</a>
+          <el-button v-if="row.ok && row.download" link type="primary" tag="a" :href="row.download">下载</el-button>
           <span v-else>—</span>
         </template>
       </el-table-column>
     </el-table>
 
-    <h3>采集附带</h3>
+    <h3>采集元数据与入库追踪</h3>
     <el-descriptions :column="2" border>
-      <el-descriptions-item v-for="field in extraFields" :key="field.key" :label="field.label" :span="field.span || 1">
+      <el-descriptions-item v-for="field in extraFields" :key="field.key" :label="field.label" :span="field.span || 1" width="105px">
         {{ text(field.value) }}
       </el-descriptions-item>
     </el-descriptions>
 
-    <h3 v-if="restFields.length">其他字段</h3>
+    <h3 v-if="restFields.length">其他扩展字段</h3>
     <el-descriptions v-if="restFields.length" :column="2" border>
-      <el-descriptions-item v-for="field in restFields" :key="field.key" :label="field.label" :span="2">
+      <el-descriptions-item v-for="field in restFields" :key="field.key" :label="field.label" :span="2" width="105px">
         {{ text(field.value) }}
       </el-descriptions-item>
     </el-descriptions>
@@ -100,67 +134,62 @@ const props = defineProps({
 
 const GROUPS = [
   {
-    title: "公告",
+    title: "基础信息",
     fields: [
-      { key: "title", label: "标题", span: 2 },
-      { key: "source", label: "来源" },
-      { key: "bizNet", label: "所属" },
+      { key: "source", label: "来源平台" },
+      { key: "bizNet", label: "所属六张网" },
       { key: "noticeType", label: "公告类型" },
-      { key: "category", label: "栏目" },
-      { key: "channel", label: "栏目编号" },
-      { key: "area", label: "地区" },
-      { key: "industry", label: "行业" },
+      { key: "category", label: "采集栏目" },
+      { key: "channel", label: "栏目代号" },
+      { key: "area", label: "所属地区" },
+      { key: "industry", label: "所属行业" },
       { key: "createTime", label: "发布时间" },
       { key: "projectStatus", label: "项目状态" },
-      { key: "projectCode", label: "项目编号", span: 2 },
+      { key: "projectCode", label: "项目编号" },
       { key: "siteNoticeId", label: "站点编号", span: 2 },
-      { key: "url", label: "原文", span: 2 },
+      { key: "url", label: "原文链接", span: 2 },
     ],
   },
   {
-    title: "采购与代理",
+    title: "商务核心（6 级漏斗提取）",
     fields: [
       { key: "purchaser", label: "采购人" },
       { key: "agent", label: "代理机构" },
       { key: "purchaseMethod", label: "采购方式" },
-      { key: "budget_label", label: "预算项" },
-      { key: "budget", label: "预算原文", span: 2 },
+      { key: "budget_label", label: "命中级别" },
+      { key: "budget", label: "预算/控制价", span: 2 },
       { key: "tenderEndTime", label: "截止时间", span: 2 },
     ],
   },
   {
-    title: "成交",
+    title: "中标与成交",
     fields: [
-      { key: "winningBidder", label: "中标人" },
+      { key: "winningBidder", label: "中标候选人" },
       { key: "winningAmount", label: "中标金额" },
     ],
   },
   {
-    title: "这条记录",
+    title: "系统溯源",
     fields: [
-      { key: "contentId", label: "公告指纹", span: 2 },
       { key: "crawlerId", label: "采集源头" },
-      { key: "script", label: "采集脚本" },
-      { key: "nodeId", label: "节点" },
+      { key: "script", label: "执行脚本" },
+      { key: "nodeId", label: "采集节点" },
       { key: "schemaVersion", label: "字段版本" },
       { key: "crawl_time", label: "采集时间" },
       { key: "storedAt", label: "入库时间" },
       { key: "storedBy", label: "入库节点" },
       { key: "processStatus", label: "整理状态" },
       { key: "processNote", label: "整理说明", span: 2 },
-      { key: "keywords", label: "关键词" },
-      { key: "highlightedWords", label: "高亮词" },
-      { key: "tags", label: "标签" },
-      { key: "onclick", label: "原页面点击" },
     ],
   },
 ]
 
-const CONTACT_LABELS = { name: "姓名", phone: "电话", role: "角色", email: "邮箱" }
-const EXTRA_LABELS = { listTitle: "列表标题", annexNames: "页面附件名", detailTruncated: "正文被截断" }
-const STATUS = { pending: "待整理", degraded: "存储降级，原文仍在" }
+const CONTACT_LABELS = { name: "联系人姓名", phone: "联系电话", role: "所属角色", email: "电子邮箱" }
+const EXTRA_LABELS = { listTitle: "列表原题", annexNames: "页面附件名", detailTruncated: "正文截断" }
+const STATUS = { pending: "待样本整理", degraded: "存储降级，原文仍在" }
 const OWN = new Set([
-  "contacts", "files", "fileUrl", "extra", "detail", "detailText", "briefText", "hasRawHtml", "_id",
+  "title", "contentId", "contacts", "files", "fileUrl", "extra", "detail", "detailText", "briefText", "hasRawHtml", "_id",
+  "keywords", "highlightedWords", "tags", "onclick",
 ])
 
 const groups = GROUPS
@@ -168,7 +197,7 @@ const detail = computed(() => props.detail)
 
 const contactRows = computed(() => {
   const rows = Array.isArray(detail.value?.contacts) ? detail.value.contacts.filter(item => item && typeof item === "object") : []
-  return rows.length ? rows : [{ name: "", phone: "" }]
+  return rows.length ? rows : []
 })
 const contactColumns = computed(() => {
   const keys = ["name", "phone"]
@@ -203,8 +232,8 @@ const restFields = computed(() => {
 })
 const bodyBlocks = computed(() => readBody(detail.value?.detailText))
 const rawHtmlText = computed(() => {
-  if (detail.value?.hasRawHtml === true) return "已保存"
-  if (detail.value?.hasRawHtml === false) return "没有"
+  if (detail.value?.hasRawHtml === true) return "已保存 HTML 原文"
+  if (detail.value?.hasRawHtml === false) return "未保存"
   return "—"
 })
 
@@ -221,7 +250,7 @@ function text(value, key) {
   if (Array.isArray(value)) {
     if (!value.length) return "—"
     if (value.every(item => item === null || ["string", "number", "boolean"].includes(typeof item))) {
-      return value.map(item => (item === null || item === undefined || item === "" ? "—" : String(item))).join("\n")
+      return value.map(item => (item === null || item === undefined || item === "" ? "—" : String(item))).join("、")
     }
     return JSON.stringify(value, null, 2)
   }
@@ -291,11 +320,58 @@ function splitRow(line) {
 </script>
 
 <style scoped>
-h3 { margin: 18px 0 8px; font-size: 15px; font-weight: 600; }
-h3:first-child { margin-top: 0; }
-.field-label { margin: 12px 0 4px; font-size: 13px; color: var(--el-text-color-secondary, #909399); }
+.detail-hero {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+.detail-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.detail-date {
+  margin-left: auto;
+  font-size: 12px;
+  color: #64748b;
+}
+.detail-title {
+  margin: 10px 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.5;
+}
+.detail-fingerprint {
+  font-size: 12px;
+  color: #64748b;
+}
+.detail-fingerprint code {
+  color: #2563eb;
+  font-weight: 600;
+}
+h3 {
+  margin: 20px 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  padding-left: 10px;
+  border-left: 3px solid #2563eb;
+}
+.field-label {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
 .gap { margin-bottom: 12px; }
-.table-wrap { overflow-x: auto; margin-top: 8px; }
+.ext-link { color: #2563eb; text-decoration: none; word-break: break-all; }
+.ext-link:hover { text-decoration: underline; }
+.table-wrap { overflow-x: auto; margin-top: 8px; border-radius: 8px; border: 1px solid #e2e8f0; }
 .notice-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6; }
-.notice-table td { border: 1px solid var(--el-border-color, #dcdfe6); padding: 8px 10px; vertical-align: top; }
+.notice-table td { border: 1px solid #e2e8f0; padding: 8px 12px; vertical-align: top; min-width: 90px; }
+.notice-table tr:first-child td { background: #f8fafc; font-weight: 600; }
 </style>

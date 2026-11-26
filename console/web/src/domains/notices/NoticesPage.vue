@@ -2,30 +2,25 @@
   <el-card shadow="never">
     <template #header>
       <div class="bar">
-        <span>公告</span>
-        <el-button type="primary" @click="openCreate">补录</el-button>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <span>标讯公告库（共 {{ total }} 条）</span>
+          <el-tag size="small" type="info" effect="plain">标题、链接和原文受保护不可改，支持整理字段修正与人工补录</el-tag>
+        </div>
+        <el-button type="primary" size="small" @click="openCreate">+ 人工补录公告</el-button>
       </div>
     </template>
-    <el-alert
-      class="gap"
-      type="info"
-      show-icon
-      :closable="false"
-      title="标题、链接和正文是采集当时记下的，不能在这里改。"
-      description="可以改类型、地区、采购人、项目编号这些整理字段。删除前会再确认一次。"
-    />
     <el-form class="gap" :inline="true" @submit.prevent="load(1)">
       <el-form-item label="关键词">
-        <el-input v-model="form.q" clearable placeholder="标题、采购人、项目编号" style="width: 220px" />
+        <el-input v-model="form.q" clearable placeholder="标题、采购人、项目编号" style="width: 210px" />
       </el-form-item>
       <el-form-item label="类型">
-        <el-input v-model="form.noticeType" clearable style="width: 140px" />
+        <el-input v-model="form.noticeType" clearable placeholder="如：招标公告 / 中标公示" style="width: 165px" />
       </el-form-item>
       <el-form-item label="地区">
-        <el-input v-model="form.area" clearable style="width: 120px" />
+        <el-input v-model="form.area" clearable placeholder="如：广东 / 全国" style="width: 135px" />
       </el-form-item>
       <el-form-item label="源头">
-        <el-select v-model="form.source" clearable placeholder="全部" style="width: 220px">
+        <el-select v-model="form.source" clearable placeholder="全部采集源头" style="width: 210px">
           <el-option v-for="source in sources" :key="source.id" :label="source.name" :value="source.id" />
         </el-select>
       </el-form-item>
@@ -34,13 +29,26 @@
         <el-button @click="reset">重置</el-button>
       </el-form-item>
     </el-form>
-    <el-table v-loading="loading" :data="rows" empty-text="没有公告。库没连通时先看上方提示。">
-      <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="source" label="来源" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="noticeType" label="类型" width="120" />
-      <el-table-column prop="area" label="地区" width="90" />
-      <el-table-column prop="createTime" label="时间" width="120" />
-      <el-table-column label="操作" width="180" fixed="right">
+    <el-table v-loading="loading" :data="rows" empty-text="没有匹配的公告。库没连通时先看上方提示。" stripe @row-dblclick="openDetail">
+      <el-table-column prop="title" label="标讯标题" min-width="260" show-overflow-tooltip>
+        <template #default="{ row }">
+          <a class="notice-title-link" @click.stop="openDetail(row)">{{ row.title }}</a>
+        </template>
+      </el-table-column>
+      <el-table-column prop="source" label="来源平台" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="noticeType" label="类型" width="115">
+        <template #default="{ row }">
+          <el-tag v-if="row.noticeType" size="small" :type="noticeTagType(row.noticeType)" effect="light">
+            {{ row.noticeType }}
+          </el-tag>
+          <span v-else class="el-text">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="area" label="地区" width="105" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.area || "—" }}</template>
+      </el-table-column>
+      <el-table-column prop="createTime" label="发布日期" width="115" />
+      <el-table-column label="操作" width="155" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row)">查看</el-button>
           <el-button link type="primary" @click="openEdit(row)">修改</el-button>
@@ -62,7 +70,7 @@
     </div>
   </el-card>
 
-  <el-dialog v-model="editorOpen" :title="creating ? '补录公告' : '修改公告'" width="560px" :close-on-click-modal="false">
+  <el-dialog v-model="editorOpen" :title="creating ? '人工补录公告' : '修改整理字段'" width="560px" :close-on-click-modal="false">
     <el-form label-width="88px">
       <template v-if="creating">
         <el-form-item label="源头" required>
@@ -87,7 +95,7 @@
         </el-form-item>
       </template>
       <template v-else>
-        <el-form-item label="标题"><span>{{ draft.title }}</span></el-form-item>
+        <el-form-item label="标题"><strong>{{ draft.title }}</strong></el-form-item>
         <el-form-item label="类型"><el-input v-model="draft.noticeType" /></el-form-item>
         <el-form-item label="地区"><el-input v-model="draft.area" /></el-form-item>
         <el-form-item label="采购人"><el-input v-model="draft.purchaser" /></el-form-item>
@@ -103,7 +111,7 @@
     </template>
   </el-dialog>
 
-  <el-drawer v-model="detailOpen" title="公告详情" size="760px">
+  <el-drawer v-model="detailOpen" title="标讯结构化提取详情" size="780px">
     <div v-loading="detailLoading">
       <NoticeDetail :detail="detail" />
     </div>
@@ -130,6 +138,13 @@ const draft = reactive(emptyDraft())
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref(null)
+
+function noticeTagType(type) {
+  const t = String(type || "")
+  if (t.includes("中标") || t.includes("成交") || t.includes("结果") || t.includes("候选")) return "success"
+  if (t.includes("变更") || t.includes("澄清") || t.includes("流标") || t.includes("终止")) return "warning"
+  return "primary"
+}
 
 function emptyDraft() {
   return {
@@ -276,3 +291,15 @@ onMounted(async () => {
   await load(1)
 })
 </script>
+
+<style scoped>
+.notice-title-link {
+  color: #1e293b;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.notice-title-link:hover {
+  color: #2563eb;
+}
+</style>

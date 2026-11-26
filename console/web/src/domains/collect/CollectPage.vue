@@ -1,8 +1,16 @@
 <template>
   <el-row :gutter="16">
-    <el-col :xs="24" :md="8">
-      <el-card shadow="never">
-        <el-input v-model="keyword" clearable placeholder="按名称或编号筛选" />
+    <el-col :xs="24" :md="9" :lg="8">
+      <el-card shadow="never" class="source-list-card">
+        <template #header>
+          <div class="bar">
+            <span>采集源头（{{ visible.length }}）</span>
+            <el-tag size="small" type="success" effect="plain">
+              运行中 {{ items.filter(i => i.running).length }}
+            </el-tag>
+          </div>
+        </template>
+        <el-input v-model="keyword" clearable placeholder="按平台名称、所属网或编号筛选..." />
         <el-table
           class="gap"
           style="margin-top: 12px"
@@ -11,10 +19,20 @@
           empty-text="没有匹配的源头"
           @current-change="choose"
         >
-          <el-table-column prop="name" label="源头" min-width="160" />
-          <el-table-column label="状态" width="90">
+          <el-table-column prop="name" label="源头平台" min-width="175" show-overflow-tooltip>
             <template #default="{ row }">
-              <el-tag size="small" :type="row.running ? 'success' : 'info'">{{ row.running ? "采集中" : "未运行" }}</el-tag>
+              <div class="source-cell">
+                <span class="source-name">{{ row.name }}</span>
+                <span class="source-net">{{ row.netName || "新型电网" }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="84" align="right">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.running ? 'success' : 'info'" effect="light">
+                <span class="status-dot" :class="row.running ? 'is-running' : 'is-idle'"></span>
+                {{ row.running ? "运行" : "待机" }}
+              </el-tag>
             </template>
           </el-table-column>
         </el-table>
@@ -23,7 +41,7 @@
             v-model:current-page="page"
             v-model:page-size="size"
             :total="visible.length"
-            :page-sizes="[10, 20, 50]"
+            :page-sizes="[10, 15, 20]"
             layout="total, prev, pager, next"
             background
             small
@@ -31,98 +49,147 @@
         </div>
       </el-card>
     </el-col>
-    <el-col :xs="24" :md="16">
+    <el-col :xs="24" :md="15" :lg="16">
       <el-empty v-if="!selected" description="选择左侧一个源头" />
       <template v-else>
         <el-card shadow="never" class="gap">
           <template #header>
             <div class="bar">
-              <span>{{ selected.name }}</span>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span style="font-size: 15px">{{ selected.name }}</span>
+                <el-tag size="small" :type="selected.running ? 'success' : 'info'">
+                  <span class="status-dot" :class="selected.running ? 'is-running' : 'is-idle'"></span>
+                  {{ selected.running ? `采集中 (PID ${selected.pid})` : "待机未运行" }}
+                </el-tag>
+              </div>
               <div>
-                <el-button type="primary" :disabled="selected.running || busy" @click="start">启动</el-button>
-                <el-button type="danger" plain :disabled="!selected.running || busy" @click="askStop">关闭</el-button>
+                <el-button type="primary" :disabled="selected.running || busy" @click="start">启动采集</el-button>
+                <el-button type="danger" plain :disabled="!selected.running || busy" @click="askStop">停止采集</el-button>
               </div>
             </div>
           </template>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item label="所属">{{ selected.netName || "新型电网" }}</el-descriptions-item>
-            <el-descriptions-item label="状态">{{ selected.running ? `采集中，进程 ${selected.pid}` : "未运行" }}</el-descriptions-item>
-            <el-descriptions-item label="栏目">{{ channelText || "—" }}</el-descriptions-item>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="所属六张网" width="110px">
+              <el-tag size="small" effect="plain">{{ selected.netName || "新型电网" }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="源头代号" width="110px">
+              <code>{{ selected.id }}</code>
+            </el-descriptions-item>
+            <el-descriptions-item label="采集栏目" :span="2">
+              <div class="channel-tags">
+                <el-tag
+                  v-for="ch in selected.channels || []"
+                  :key="ch.code"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                >{{ ch.name }}</el-tag>
+                <span v-if="!(selected.channels || []).length">—</span>
+              </div>
+            </el-descriptions-item>
           </el-descriptions>
-          <el-divider />
+          <el-divider style="margin: 16px 0" />
           <el-form label-width="88px" @submit.prevent="save">
-            <el-form-item label="采集范围">
-              <el-select v-model="profile.span" style="width: 220px">
-                <el-option v-for="item in spans" :key="item.code" :label="item.label" :value="item.code" />
-              </el-select>
-            </el-form-item>
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="采集范围">
+                  <el-select v-model="profile.span" style="width: 100%">
+                    <el-option v-for="item in spans" :key="item.code" :label="item.label" :value="item.code" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="运行方式">
+                  <el-radio-group v-model="profile.headless">
+                    <el-radio :value="true">无头模式</el-radio>
+                    <el-radio :value="false">显示窗口</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="浏览器">
+                  <el-radio-group v-model="profile.browser">
+                    <el-radio value="undetected" style="margin-right: 14px">反检测</el-radio>
+                    <el-radio value="selenium">普通 Chrome</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="指纹策略">
+                  <el-radio-group v-model="profile.fingerprint">
+                    <el-radio value="fixed">固定指纹</el-radio>
+                    <el-radio value="rotate">动态轮换</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+            </el-row>
             <el-form-item label="采集节奏">
-              <el-radio-group v-model="profile.pace">
-                <el-radio v-for="item in paces" :key="item.code" :value="item.code" @click="openPace(item.code)">{{ item.label }}</el-radio>
-              </el-radio-group>
-              <p class="el-text">点一下「从容」或「正常」，查看这一档怎么停、连续多少次会多停一会儿。</p>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+                <el-radio-group v-model="profile.pace">
+                  <el-radio v-for="item in paces" :key="item.code" :value="item.code">{{ item.label }}</el-radio>
+                </el-radio-group>
+                <el-button link type="primary" size="small" @click="openPace(profile.pace)">
+                  查看「{{ profile.pace === 'calm' ? '从容' : '正常' }}」停顿策略说明
+                </el-button>
+              </div>
             </el-form-item>
-            <el-form-item label="运行方式">
-              <el-radio-group v-model="profile.headless">
-                <el-radio :value="true">无头</el-radio>
-                <el-radio :value="false">有界面</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="浏览器">
-              <el-radio-group v-model="profile.browser">
-                <el-radio value="undetected">反检测 Chrome</el-radio>
-                <el-radio value="selenium">普通 Chrome</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="指纹">
-              <el-radio-group v-model="profile.fingerprint">
-                <el-radio value="fixed">固定</el-radio>
-                <el-radio value="rotate">轮换</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" native-type="submit">保存设置</el-button>
-              <el-button @click="applyAll">全部源头使用这个范围和节奏</el-button>
+            <el-form-item style="margin-bottom: 0">
+              <el-button type="primary" native-type="submit">保存当前源头设置</el-button>
+              <el-button @click="applyAll">全部源头同步此范围与节奏</el-button>
             </el-form-item>
           </el-form>
         </el-card>
+
         <el-card shadow="never" class="gap">
           <template #header>
             <div class="bar">
-              <span>{{ selected.netName || "新型电网" }} · {{ selected.name }} 的进度</span>
+              <span>{{ selected.netName || "新型电网" }} · {{ selected.name }} 实时栏目进度</span>
             </div>
           </template>
-          <el-table :data="progressRows" empty-text="还没有进度。启动后会按栏目更新。">
-            <el-table-column prop="channelLabel" label="栏目" min-width="140" />
-            <el-table-column prop="page" label="页" width="70" />
-            <el-table-column prop="saved" label="保存" width="70" />
-            <el-table-column prop="skipped" label="跳过" width="70" />
-            <el-table-column prop="failed" label="失败" width="70" />
-            <el-table-column prop="message" label="刚才" min-width="160" show-overflow-tooltip />
-            <el-table-column prop="updatedAt" label="时间" width="170" />
+          <el-table :data="progressRows" empty-text="还没有进度。启动后会按栏目实时更新。" stripe>
+            <el-table-column prop="channelLabel" label="栏目" min-width="110" show-overflow-tooltip />
+            <el-table-column prop="page" label="页码" width="60" />
+            <el-table-column prop="saved" label="保存" width="60">
+              <template #default="{ row }">
+                <strong style="color: #059669">{{ row.saved ?? 0 }}</strong>
+              </template>
+            </el-table-column>
+            <el-table-column prop="skipped" label="跳过" width="60" />
+            <el-table-column prop="failed" label="失败" width="60">
+              <template #default="{ row }">
+                <span :style="row.failed ? 'color: #ef4444; font-weight: 600' : ''">{{ row.failed ?? 0 }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="message" label="最新动态" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="updatedAt" label="更新时间" width="152" />
           </el-table>
         </el-card>
+
         <el-card shadow="never">
           <template #header>
             <div class="bar">
-              <span>采集记录</span>
-              <div class="bar">
-                <el-input v-model="logWord" clearable placeholder="标题或附件情况" style="width: 180px" />
-                <el-select v-model="channel" clearable placeholder="全部栏目" style="width: 150px">
+              <span>标讯落盘实时流日志</span>
+              <div class="filter-bar">
+                <el-input v-model="logWord" clearable size="small" placeholder="搜标题或附件名..." style="width: 165px" />
+                <el-select v-model="channel" clearable size="small" placeholder="全部栏目" style="width: 135px">
                   <el-option v-for="item in selected.channels || []" :key="item.code" :label="item.name" :value="item.name" />
                 </el-select>
-                <el-select v-model="logOutcome" clearable placeholder="全部结果" style="width: 120px">
+                <el-select v-model="logOutcome" clearable size="small" placeholder="全部结果" style="width: 110px">
                   <el-option v-for="item in outcomes" :key="item" :label="item" :value="item" />
                 </el-select>
               </div>
             </div>
           </template>
-          <el-table :data="pagedLogs" height="420" empty-text="还没有按标讯记下的记录。启动采集后，每条公告会留一行。">
-            <el-table-column prop="time" label="时间" width="168" />
-            <el-table-column prop="channel" label="栏目" width="120" show-overflow-tooltip />
-            <el-table-column prop="outcome" label="结果" width="90" />
-            <el-table-column prop="title" label="标讯" min-width="220" show-overflow-tooltip />
-            <el-table-column prop="file" label="附件" min-width="220" show-overflow-tooltip />
+          <el-table :data="pagedLogs" height="380" empty-text="还没有按标讯记下的记录。启动采集后，每条公告会留一行。" stripe>
+            <el-table-column prop="time" label="时间" width="152" />
+            <el-table-column prop="channel" label="栏目" width="100" show-overflow-tooltip />
+            <el-table-column prop="outcome" label="结果" width="80">
+              <template #default="{ row }">
+                <el-tag size="small" :type="outcomeTag(row.outcome)">{{ row.outcome || "—" }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="title" label="标讯标题" min-width="175" show-overflow-tooltip />
+            <el-table-column prop="file" label="附件落盘情况" min-width="140" show-overflow-tooltip />
           </el-table>
           <div class="pager">
             <el-pagination
@@ -171,16 +238,21 @@ const progressRows = ref([])
 const paceOpen = ref(false)
 const paceShown = ref(null)
 const page = ref(1)
-const size = ref(10)
+const size = ref(15)
 let timer = 0
 
 const visible = computed(() => {
   const text = keyword.value.trim().toLowerCase()
-  return items.value.filter(item => !text || item.name.toLowerCase().includes(text) || item.id.includes(text))
+  return items.value.filter(
+    item =>
+      !text ||
+      item.name.toLowerCase().includes(text) ||
+      item.id.includes(text) ||
+      (item.netName || "").toLowerCase().includes(text)
+  )
 })
 const paged = computed(() => visible.value.slice((page.value - 1) * size.value, page.value * size.value))
 const selected = computed(() => items.value.find(item => item.id === selectedId.value) || null)
-const channelText = computed(() => (selected.value?.channels || []).map(item => item.name).join("、"))
 const logRows = computed(() => {
   const rows = []
   for (const line of logText.value.split("\n")) {
@@ -207,7 +279,7 @@ const shownLogs = computed(() => {
   })
 })
 const pagedLogs = computed(() => shownLogs.value.slice((logPage.value - 1) * logSize.value, logPage.value * logSize.value))
-const paceTitle = computed(() => `${paceShown.value?.label || "采集"}的节奏`)
+const paceTitle = computed(() => `${paceShown.value?.label || "采集"}的拟人停顿策略`)
 const paceSteps = computed(() => {
   if (paceShown.value?.steps?.length) return paceShown.value.steps
   return paceFallback[paceShown.value?.code] || []
@@ -230,6 +302,13 @@ const paceFallback = {
     "单次停留满 8 秒，采集日志会记一行「停 N 秒，避开固定频率」。",
     "正在采集时改节奏不会立刻生效。先关闭，再启动，才按新的节奏走。",
   ],
+}
+
+function outcomeTag(outcome) {
+  if (outcome === "已保存") return "success"
+  if (outcome === "补附件") return "primary"
+  if (outcome === "失败") return "danger"
+  return "info"
 }
 
 function openPace(code) {
@@ -350,4 +429,9 @@ onUnmounted(() => {
 <style scoped>
 .pace-steps { margin: 0; padding-left: 20px; line-height: 1.8; }
 .pace-steps li + li { margin-top: 8px; }
+.source-cell { display: flex; flex-direction: column; line-height: 1.4; padding: 2px 0; }
+.source-name { font-weight: 500; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-net { font-size: 11px; color: #64748b; margin-top: 2px; }
+.channel-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 </style>
