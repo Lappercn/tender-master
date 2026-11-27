@@ -158,6 +158,10 @@ python manage.py api
 
 # 7. 启动可视化管理后台（同时包含管理接口与开放查询 API，默认监听 http://127.0.0.1:8788）
 python manage.py console
+
+# 8. 单独运行「中国招标投标公共服务平台」（全国 26 个行业全量汇总爬虫，3000+ 行重型脚本）
+# 加 --now 参数为立即运行抓取最近 7 天数据；不加 --now 则进入每日 16:00 定时运行模式
+python wj_spiders/wj_cebpubservice_china.py --now
 ```
 
 ### 分布式 / 后台无人值守队列命令：

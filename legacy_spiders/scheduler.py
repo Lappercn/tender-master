@@ -48,7 +48,7 @@ class CrawlerScheduler:
         self.scripts = [
             "cfcpn_spider.py",
             "login_spider.py", 
-            "main_updated_2.1.py",
+            "cebpubservice_spider.py",
             "tobacco_spider.py",
             "guotie_spider.py",
             "plap_spider.py"
@@ -132,7 +132,7 @@ class CrawlerScheduler:
                 cmd = [sys.executable, script_path]  # 默认已无头
             elif script_name == "login_spider.py":
                 cmd = [sys.executable, script_path, "test"]
-            elif script_name == "main_updated_2.1.py":
+            elif script_name == "cebpubservice_spider.py":
                 cmd = [sys.executable, script_path, "--now"]
             elif script_name == "tobacco_spider.py":
                 cmd = [sys.executable, script_path]  # 默认已无头

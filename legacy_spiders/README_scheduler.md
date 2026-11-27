@@ -14,9 +14,9 @@
    - 采集千里马网站的招标信息
    - 运行参数: `test` (立即运行模式)
 
-3. **中国招标投标公共服务平台** (`main_updated_2.1.py`)
-   - 采集中国招标投标公共服务平台信息
-   - 运行参数: `--now` (立即运行模式)
+3. **中国招标投标公共服务平台** (`cebpubservice_spider.py` / `wj_spiders/wj_cebpubservice_china.py`)
+   - 采集中国招标投标公共服务平台（`bulletin.cebpubservice.com`）26 个全行业招投标信息
+   - 运行参数: `--now` (立即运行模式，如 `python wj_spiders/wj_cebpubservice_china.py --now`)
 
 4. **中国烟草行业招标采集** (`tobacco_spider.py`)
    - 采集中国烟草行业招标信息

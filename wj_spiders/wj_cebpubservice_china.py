@@ -3006,8 +3006,8 @@ def main():
             logger.error(traceback.format_exc())
     else:
         # 定时运行模式（默认）
-        logger.info("🚀 启动智能定时爬虫系统")
-        logger.info("💡 提示: 使用 'python main_updated_2.1.py --now' 可立即运行")
+        logger.info("🚀 启动智能定时爬虫系统（中国招标投标公共服务平台）")
+        logger.info("💡 提示: 使用 'python wj_spiders/wj_cebpubservice_china.py --now' 可立即运行")
         
         # 创建爬虫实例（自动根据当前日期计算爬取天数）
         crawler = ScheduledCrawler()

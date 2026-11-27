@@ -185,12 +185,13 @@
 
 ---
 
-### 二、 15 个「无界 (`wj_*`)」标准化公开站点解析脚本（[`wj_spiders/`](./wj_spiders)）
+### 二、 16 个「无界 (`wj_*`)」标准化公开站点解析脚本（[`wj_spiders/`](./wj_spiders)）
 
-该系列脚本统一归档在 [`wj_spiders/`](./wj_spiders) 文件夹下，遵循《[无界-数据清单-爬虫规范（落地版）](./喂给模型的内容/无界-数据清单-爬虫规范（落地版）.md)》，统一读取 [`config.py`](./config.py) 配置，采用**标题清洗 MD5 指纹去重**、统一数据字典格式与标准化正则提取：
+该系列脚本统一归档在 [`wj_spiders/`](./wj_spiders) 文件夹下，包含**全国国家级全行业汇总平台（中国招标投标公共服务平台）**及 15 个核心政企/央国企平台：
 
 | 行业领域 | 脚本文件路径 | 目标平台名称 | 目标网址 | 技术特点与解析范围 |
 | :--- | :--- | :--- | :--- | :--- |
+| **国家级全行业汇总** | [`wj_spiders/wj_cebpubservice_china.py`](./wj_spiders/wj_cebpubservice_china.py) | **中国招标投标公共服务平台（全国公服平台）** | `bulletin.cebpubservice.com` | **3000+ 行重型可用脚本**（同步保留于 [`legacy_spiders/cebpubservice_spider.py`](./legacy_spiders/cebpubservice_spider.py)）：覆盖能源电力、公路、铁路、石油石化、信息电子等 **26 个全行业分类切换**、多层 `iframe` 定位缓存与滑块验证检测（立即运行：`python wj_spiders/wj_cebpubservice_china.py --now`） |
 | **综合政务** | [`wj_spiders/wj_ccgp_china.py`](./wj_spiders/wj_ccgp_china.py) | **中国政府采购网** | `www.ccgp.gov.cn` | 公开招标、询价、竞争性谈判、中标公告等多栏目 DOM 解析 |
 | **综合政务** | [`wj_spiders/wj_ccgp_chongqing.py`](./wj_spiders/wj_ccgp_chongqing.py) | **重庆市政府采购网** | `www.ccgp-chongqing.gov.cn` | 地方政采结构化解析示例，支持相对时间/绝对日期过滤、6 级预算与联系人配对提取 |
 | **综合政务** | [`wj_spiders/wj_ggzy_china.py`](./wj_spiders/wj_ggzy_china.py) | **全国公共资源交易平台** | `www.ggzy.gov.cn` | 跨行业公共资源交易公开信息列表与详情提取 |
@@ -215,7 +216,7 @@
 
 | 脚本路径 | 研究目标 / 用途 | 代码内容说明 |
 | :--- | :--- | :--- |
-| [`legacy_spiders/main_updated_2.1.py`](./legacy_spiders/main_updated_2.1.py) | **中国招标投标公共服务平台** (`cebpubservice.com`) | 早期编写的 3000+ 行重型脚本，主要演示 26 个行业分类切换与多层 `iframe` 定位缓存技术 |
+| [`legacy_spiders/cebpubservice_spider.py`](./legacy_spiders/cebpubservice_spider.py) | **中国招标投标公共服务平台** (`bulletin.cebpubservice.com`) | **可直接运行**（原文件名 `main_updated_2.1.py`，亦同步至 [`wj_spiders/wj_cebpubservice_china.py`](./wj_spiders/wj_cebpubservice_china.py)）：3000+ 行全行业脚本，支持 26 个行业分类自动切换、多层 `iframe` 定位缓存与定时/立即运行（`--now`） |
 | [`legacy_spiders/plap_spider.py`](./legacy_spiders/plap_spider.py) | **公开采购页面 DOM 解析示例** | 早期针对 FreeCMS 架构公开公告栏目的 DOM 选择器学习代码（**严禁用于任何高频或违规抓取**） |
 | [`legacy_spiders/cfcpn_spider.py`](./legacy_spiders/cfcpn_spider.py) | **金采网 (CLI 多模式版)** | 演示 `argparse` 下的 `run` / `schedule` / `test` 三种命令行运行模式封装 |
 | [`legacy_spiders/guotie_spider.py`](./legacy_spiders/guotie_spider.py) | **国铁采购平台 (早期版)** | 早期基于 `undetected_chromedriver` 的页面分页解析学习记录（详见 [`README_guotie.md`](./legacy_spiders/README_guotie.md)） |
